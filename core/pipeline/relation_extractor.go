@@ -18,7 +18,7 @@ import (
 func DefaultRelationExtractor() (RelationExtractFunc, error) {
 	// Prepare citation detection model (using NER to detect citation entities)
 	modelName := "KnightsAnalytics/distilbert-NER"
-	modelPath, err := helper.PrepareModel(modelName)
+	modelPath, err := helper.PrepareModel(modelName, "model.onnx")
 	if err != nil {
 		return nil, err
 	}

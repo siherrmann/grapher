@@ -9,7 +9,7 @@ import (
 )
 
 // PrepareModel downloads the model if it doesn't exist and returns the model path
-func PrepareModel(modelName string) (string, error) {
+func PrepareModel(modelName string, onnxFilePath string) (string, error) {
 	modelDir := "./models"
 
 	// Sanitize model name for directory (replace / with _)
@@ -25,6 +25,9 @@ func PrepareModel(modelName string) (string, error) {
 			return "", fmt.Errorf("failed to create model directory: %w", err)
 		}
 		downloadOptions := hugot.NewDownloadOptions()
+		if onnxFilePath != "" {
+			downloadOptions.OnnxFilePath = onnxFilePath
+		}
 		downloadedPath, err := hugot.DownloadModel(modelName, modelDir, downloadOptions)
 		if err != nil {
 			return "", fmt.Errorf("failed to download model: %w", err)

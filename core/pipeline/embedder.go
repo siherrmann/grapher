@@ -12,7 +12,7 @@ import (
 func DefaultEmbedder() (EmbedFunc, error) {
 	// Prepare model (download if needed)
 	modelName := "sentence-transformers/all-MiniLM-L6-v2"
-	modelPath, err := helper.PrepareModel(modelName)
+	modelPath, err := helper.PrepareModel(modelName, "onnx/model.onnx")
 	if err != nil {
 		return nil, err
 	}

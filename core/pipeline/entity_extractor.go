@@ -18,7 +18,7 @@ func DefaultEntityExtractor() (EntityExtractFunc, error) {
 	// Prepare model (download if needed)
 	// Using KnightsAnalytics optimized distilbert-NER model
 	modelName := "KnightsAnalytics/distilbert-NER"
-	modelPath, err := helper.PrepareModel(modelName)
+	modelPath, err := helper.PrepareModel(modelName, "model.onnx")
 	if err != nil {
 		return nil, err
 	}

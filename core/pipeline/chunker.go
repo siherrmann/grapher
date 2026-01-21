@@ -147,7 +147,7 @@ func DefaultChunker(maxChunkSize int, similarityThreshold float32) ChunkFunc {
 	return func(text string, basePath string) ([]ChunkWithPath, error) {
 		// Prepare model (download if needed)
 		modelName := "sentence-transformers/all-MiniLM-L6-v2"
-		modelPath, err := helper.PrepareModel(modelName)
+		modelPath, err := helper.PrepareModel(modelName, "onnx/model.onnx")
 		if err != nil {
 			return nil, err
 		}
@@ -161,8 +161,9 @@ func DefaultChunker(maxChunkSize int, similarityThreshold float32) ChunkFunc {
 
 		// Create sentence transformers pipeline configuration
 		config := hugot.FeatureExtractionConfig{
-			ModelPath: modelPath,
-			Name:      "semantic-chunker-pipeline",
+			ModelPath:    modelPath,
+			Name:         "semantic-chunker-pipeline",
+			OnnxFilename: "onnx/model.onnx",
 		}
 		sentencePipeline, err := hugot.NewPipeline(session, config)
 		if err != nil {
