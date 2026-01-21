@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strings"
 
@@ -127,9 +128,24 @@ func DefaultRelationExtractor() (RelationExtractFunc, error) {
 					start2, ok2 := entity2.Metadata["start"].(uint)
 
 					if ok1 && ok2 {
-						distance := int(start2) - int(start1)
-						if distance < 0 {
-							distance = -distance
+						// Clamp start positions to prevent overflow
+						clampedStart1 := start1
+						if start1 > math.MaxInt {
+							clampedStart1 = uint(math.MaxInt)
+						}
+						clampedStart2 := start2
+						if start2 > math.MaxInt {
+							clampedStart2 = uint(math.MaxInt)
+						}
+
+						// Calculate distance with clamped values
+						var distance int
+						if clampedStart2 > clampedStart1 {
+							// #nosec G115
+							distance = int(clampedStart2 - clampedStart1)
+						} else {
+							// #nosec G115
+							distance = int(clampedStart1 - clampedStart2)
 						}
 
 						// If entities are within 100 characters, create an entity mention edge

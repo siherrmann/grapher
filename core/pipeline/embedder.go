@@ -25,8 +25,9 @@ func DefaultEmbedder() (EmbedFunc, error) {
 
 	// Create sentence transformers pipeline configuration
 	config := hugot.FeatureExtractionConfig{
-		ModelPath: modelPath,
-		Name:      "embedder-pipeline",
+		ModelPath:    modelPath,
+		Name:         "embedder-pipeline",
+		OnnxFilename: "model.onnx",
 	}
 	sentencePipeline, err := hugot.NewPipeline(session, config)
 	if err != nil {
