@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/pgvector/pgvector-go"
 	"github.com/siherrmann/grapher/helper"
 	"github.com/siherrmann/grapher/model"
@@ -360,7 +361,7 @@ func (h *ChunksDBHandler) SelectChunksBySimilarity(embedding []float32, limit in
 	// Convert documentRIDs to PostgreSQL UUID array format
 	var documentRIDsParam interface{}
 	if len(documentRIDs) > 0 {
-		documentRIDsParam = documentRIDs
+		documentRIDsParam = pq.Array(documentRIDs)
 	} else {
 		documentRIDsParam = nil
 	}
@@ -438,7 +439,7 @@ func (h *ChunksDBHandler) SelectChunksBySimilarityWithContext(
 	// Convert documentRIDs to PostgreSQL UUID array format
 	var documentRIDsParam interface{}
 	if len(documentRIDs) > 0 {
-		documentRIDsParam = documentRIDs
+		documentRIDsParam = pq.Array(documentRIDs)
 	} else {
 		documentRIDsParam = nil
 	}

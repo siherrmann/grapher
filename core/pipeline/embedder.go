@@ -30,7 +30,9 @@ func DefaultEmbedder() (EmbedFunc, error) {
 	}
 	sentencePipeline, err := hugot.NewPipeline(session, config)
 	if err != nil {
-		session.Destroy()
+		if destroyErr := session.Destroy(); destroyErr != nil {
+			return nil, fmt.Errorf("failed to create sentence pipeline: %w (cleanup error: %v)", err, destroyErr)
+		}
 		return nil, fmt.Errorf("failed to create sentence pipeline: %w", err)
 	}
 

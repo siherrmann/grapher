@@ -96,7 +96,9 @@ func (g *Grapher) SetPipeline(pipeline *pipeline.Pipeline) {
 
 // UseDefaultPipeline sets up the default semantic chunking and embedding pipeline
 // This uses DefaultChunker with 500 char max chunks and 0.7 similarity threshold,
-// and DefaultEmbedder with the all-MiniLM-L6-v2 model (384 dimensions)
+// DefaultEmbedder with the all-MiniLM-L6-v2 model (384 dimensions),
+// DefaultEntityExtractor with distilbert-NER for entity recognition,
+// and DefaultRelationExtractor with distilbert-NER for citation and reference detection
 func (g *Grapher) UseDefaultPipeline() error {
 	chunker := pipeline.DefaultChunker(500, 0.7)
 	embedder, err := pipeline.DefaultEmbedder()
@@ -104,7 +106,19 @@ func (g *Grapher) UseDefaultPipeline() error {
 		return helper.NewError("create default embedder", err)
 	}
 
+	entityExtractor, err := pipeline.DefaultEntityExtractor()
+	if err != nil {
+		return helper.NewError("create default entity extractor", err)
+	}
+
+	relationExtractor, err := pipeline.DefaultRelationExtractor()
+	if err != nil {
+		return helper.NewError("create default relation extractor", err)
+	}
+
 	g.Pipeline = pipeline.NewPipeline(chunker, embedder)
+	g.Pipeline.SetEntityExtractor(entityExtractor)
+	g.Pipeline.SetRelationExtractor(relationExtractor)
 	return nil
 }
 
@@ -112,6 +126,8 @@ func (g *Grapher) UseDefaultPipeline() error {
 // 1. Inserting the document metadata (without content)
 // 2. Processing the content into chunks using the pipeline
 // 3. Inserting all chunks with the document ID
+// 4. Extracting and inserting entities (if entity extractor is configured)
+// 5. Extracting and inserting relations/edges (if relation extractor is configured)
 // The document's Content field is used for processing but not stored in the database.
 // Returns the number of chunks inserted and any error encountered.
 func (g *Grapher) ProcessAndInsertDocument(doc *model.Document) (int, error) {
@@ -134,23 +150,69 @@ func (g *Grapher) ProcessAndInsertDocument(doc *model.Document) (int, error) {
 
 	g.log.Info("Inserted document", slog.String("document_id", doc.RID.String()), slog.String("title", doc.Title))
 
-	// Process content into chunks
-	chunks, err := g.Pipeline.Process(content, fmt.Sprintf("doc_%s", doc.RID.String()))
+	// Process content with entity and relation extraction
+	result, err := g.Pipeline.ProcessWithExtraction(content, fmt.Sprintf("doc_%s", doc.RID.String()))
 	if err != nil {
 		return 0, helper.NewError("process chunks", err)
 	}
 
-	g.log.Info("Processed document into chunks", slog.Int("num_chunks", len(chunks)), slog.String("document_id", doc.RID.String()))
+	g.log.Info("Processed document into chunks",
+		slog.Int("num_chunks", len(result.Chunks)),
+		slog.Int("num_entities", len(result.Entities)),
+		slog.Int("num_relations", len(result.Relations)),
+		slog.String("document_id", doc.RID.String()))
 
-	// Insert all chunks
-	for i, chunk := range chunks {
+	// Insert all chunks and build a path-to-ID mapping
+	chunkPathToID := make(map[string]uuid.UUID)
+	for i, chunk := range result.Chunks {
 		chunk.DocumentID = doc.ID
 		if err := g.Chunks.InsertChunk(chunk); err != nil {
 			return i, helper.NewError(fmt.Sprintf("insert chunk %d", i), err)
 		}
+		chunkPathToID[chunk.Path] = chunk.ID
 	}
 
-	return len(chunks), nil
+	// Insert entities
+	if len(result.Entities) > 0 {
+		for _, entity := range result.Entities {
+			if err := g.Entities.InsertEntity(entity); err != nil {
+				g.log.Error("Failed to insert entity", slog.String("entity", entity.Name), slog.String("error", err.Error()))
+				// Continue processing other entities even if one fails
+			}
+		}
+		g.log.Info("Inserted entities", slog.Int("count", len(result.Entities)))
+	}
+
+	// Insert relations/edges
+	if len(result.Relations) > 0 {
+		for _, edge := range result.Relations {
+			// For reference edges without entity IDs, link to the source chunk
+			if edge.SourceEntityID == nil && edge.SourceChunkID == nil {
+				// Get chunk ID from extracted_from metadata
+				if extractedFrom, ok := edge.Metadata["extracted_from"].(string); ok {
+					if chunkID, found := chunkPathToID[extractedFrom]; found {
+						edge.SourceChunkID = &chunkID
+					}
+				}
+			}
+
+			// Skip edges that don't have both source and target
+			// (e.g., citations to external documents not in our database)
+			hasSource := edge.SourceChunkID != nil || edge.SourceEntityID != nil
+			hasTarget := edge.TargetChunkID != nil || edge.TargetEntityID != nil
+			if !hasSource || !hasTarget {
+				continue // Skip this edge
+			}
+
+			if err := g.Edges.InsertEdge(edge); err != nil {
+				g.log.Error("Failed to insert edge", slog.String("type", string(edge.EdgeType)), slog.String("error", err.Error()))
+				// Continue processing other edges even if one fails
+			}
+		}
+		g.log.Info("Inserted relations", slog.Int("count", len(result.Relations)))
+	}
+
+	return len(result.Chunks), nil
 }
 
 // Search performs vector similarity search
