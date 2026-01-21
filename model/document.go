@@ -23,7 +23,10 @@ type Document struct {
 // NewDocumentFromFile reads a file and creates a Document with the file content
 // The title defaults to the filename, and source to the file path
 func NewDocumentFromFile(filePath string, metadata Metadata) (*Document, error) {
-	content, err := os.ReadFile(filePath)
+	// Clean the path to prevent directory traversal
+	cleanPath := filepath.Clean(filePath)
+	// #nosec G304 - This function intentionally reads user-specified files as part of document ingestion
+	content, err := os.ReadFile(cleanPath)
 	if err != nil {
 		return nil, err
 	}

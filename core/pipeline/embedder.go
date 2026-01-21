@@ -12,7 +12,7 @@ import (
 func DefaultEmbedder() (EmbedFunc, error) {
 	// Prepare model (download if needed)
 	modelName := "sentence-transformers/all-MiniLM-L6-v2"
-	modelPath, err := helper.PrepareModel(modelName)
+	modelPath, err := helper.PrepareModel(modelName, "onnx/model.onnx")
 	if err != nil {
 		return nil, err
 	}
@@ -25,12 +25,15 @@ func DefaultEmbedder() (EmbedFunc, error) {
 
 	// Create sentence transformers pipeline configuration
 	config := hugot.FeatureExtractionConfig{
-		ModelPath: modelPath,
-		Name:      "embedder-pipeline",
+		ModelPath:    modelPath,
+		Name:         "embedder-pipeline",
+		OnnxFilename: "onnx/model.onnx",
 	}
 	sentencePipeline, err := hugot.NewPipeline(session, config)
 	if err != nil {
-		session.Destroy()
+		if destroyErr := session.Destroy(); destroyErr != nil {
+			return nil, fmt.Errorf("failed to create sentence pipeline: %w (cleanup error: %v)", err, destroyErr)
+		}
 		return nil, fmt.Errorf("failed to create sentence pipeline: %w", err)
 	}
 
