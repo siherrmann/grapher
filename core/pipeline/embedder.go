@@ -27,7 +27,7 @@ func DefaultEmbedder() (EmbedFunc, error) {
 	config := hugot.FeatureExtractionConfig{
 		ModelPath:    modelPath,
 		Name:         "embedder-pipeline",
-		OnnxFilename: "model.onnx",
+		OnnxFilename: "onnx/model.onnx",
 	}
 	sentencePipeline, err := hugot.NewPipeline(session, config)
 	if err != nil {
