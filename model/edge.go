@@ -2,8 +2,6 @@ package model
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // EdgeType represents the type of relationship between nodes
@@ -21,16 +19,16 @@ const (
 
 // Edge represents a relationship between chunks and/or entities
 type Edge struct {
-	ID             uuid.UUID  `json:"id"`
-	SourceChunkID  *uuid.UUID `json:"source_chunk_id,omitempty"`
-	TargetChunkID  *uuid.UUID `json:"target_chunk_id,omitempty"`
-	SourceEntityID *uuid.UUID `json:"source_entity_id,omitempty"`
-	TargetEntityID *uuid.UUID `json:"target_entity_id,omitempty"`
-	EdgeType       EdgeType   `json:"edge_type"`
-	Weight         float64    `json:"weight"`
-	Bidirectional  bool       `json:"bidirectional"`
-	Metadata       Metadata   `json:"metadata,omitempty"`
-	CreatedAt      time.Time  `json:"created_at"`
+	ID             int       `json:"id"`
+	SourceChunkID  *int      `json:"source_chunk_id,omitempty"`
+	TargetChunkID  *int      `json:"target_chunk_id,omitempty"`
+	SourceEntityID *int      `json:"source_entity_id,omitempty"`
+	TargetEntityID *int      `json:"target_entity_id,omitempty"`
+	EdgeType       EdgeType  `json:"edge_type"`
+	Weight         float64   `json:"weight"`
+	Bidirectional  bool      `json:"bidirectional"`
+	Metadata       Metadata  `json:"metadata,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 // EdgeConnection represents an edge with directional information
@@ -41,7 +39,7 @@ type EdgeConnection struct {
 
 // TraversalNode represents a node in a graph traversal
 type TraversalNode struct {
-	ChunkID uuid.UUID   `json:"chunk_id"`
-	Depth   int         `json:"depth"`
-	Path    []uuid.UUID `json:"path"`
+	ChunkID int   `json:"chunk_id"`
+	Depth   int   `json:"depth"`
+	Path    []int `json:"path"`
 }

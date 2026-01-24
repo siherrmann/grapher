@@ -3,6 +3,7 @@ module github.com/siherrmann/grapher
 go 1.24.3
 
 require (
+	github.com/docker/docker v28.5.1+incompatible
 	github.com/fatih/color v1.18.0
 	github.com/google/uuid v1.6.0
 	github.com/knights-analytics/hugot v0.6.1
@@ -28,7 +29,6 @@ require (
 	github.com/daulet/tokenizers v1.24.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
-	github.com/docker/docker v28.5.1+incompatible // indirect
 	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect

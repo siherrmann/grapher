@@ -48,13 +48,13 @@ func initHandlers(t *testing.T) (*database.ChunksDBHandler, *database.EdgesDBHan
 	documents, err := database.NewDocumentsDBHandler(db, true)
 	require.NoError(t, err)
 
-	edges, err := database.NewEdgesDBHandler(db, true)
-	require.NoError(t, err)
-
-	chunks, err := database.NewChunksDBHandler(db, edges, 384, true)
+	chunks, err := database.NewChunksDBHandler(db, 384, true)
 	require.NoError(t, err)
 
 	entities, err := database.NewEntitiesDBHandler(db, true)
+	require.NoError(t, err)
+
+	edges, err := database.NewEdgesDBHandler(db, true)
 	require.NoError(t, err)
 
 	// Note: We don't close the db here as tests will use these handlers

@@ -26,50 +26,51 @@ var entitiesSQL string
 var ChunksFunctions = []string{
 	"init_chunks",
 	"insert_chunk",
+	"update_chunk",
+	"delete_chunk",
 	"select_chunk",
 	"select_chunks_by_document",
+	"select_chunks_by_entity",
 	"select_chunks_by_path_descendant",
 	"select_chunks_by_path_ancestor",
 	"select_chunks_by_similarity",
 	"select_chunks_by_similarity_with_context",
-	"delete_chunk",
-	"update_chunk_embedding",
+	"select_chunks_by_bfs",
 }
 
 var DocumentsFunctions = []string{
 	"init_documents",
 	"insert_document",
+	"update_document",
+	"delete_document",
 	"select_document",
 	"select_all_documents",
 	"search_documents",
-	"update_document",
-	"delete_document",
 }
 
 var EdgesFunctions = []string{
 	"init_edges",
 	"insert_edge",
+	"update_edge_weight",
+	"delete_edge",
 	"select_edge",
 	"select_edges_from_chunk",
 	"select_edges_to_chunk",
 	"select_edges_connected_to_chunk",
 	"select_edges_from_entity",
 	"select_edges_to_entity",
-	"delete_edge",
-	"update_edge_weight",
 	"traverse_bfs_from_chunk",
 }
 
 var EntitiesFunctions = []string{
 	"init_entities",
 	"insert_entity",
+	"update_entity_metadata",
+	"delete_entity",
 	"select_entity",
 	"select_entity_by_name",
-	"search_entities",
+	"select_entities_by_search",
 	"select_entities_by_type",
-	"delete_entity",
-	"update_entity_metadata",
-	"select_chunks_mentioning_entity",
 }
 
 // Init intializes db extensions

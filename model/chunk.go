@@ -8,8 +8,8 @@ import (
 
 // Chunk represents a document chunk (node in the graph)
 type Chunk struct {
-	ID          uuid.UUID `json:"id"`
-	DocumentID  int64     `json:"document_id"`
+	ID          int       `json:"id"`
+	DocumentID  int       `json:"document_id"`
 	DocumentRID uuid.UUID `json:"document_rid"`
 	Content     string    `json:"content"`
 	Path        string    `json:"path"` // ltree path
@@ -20,6 +20,9 @@ type Chunk struct {
 	Metadata    Metadata  `json:"metadata,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	// Results
-	Similarity *float64 `json:"similarity,omitempty"`
-	IsMatch    *bool    `json:"is_match,omitempty"`
+	Similarity     float64 `json:"similarity,omitempty"`
+	Distance       float64 `json:"distance,omitempty"`
+	IsMatch        bool    `json:"is_match,omitempty"`
+	PathFromSource []int   `json:"path_from_source,omitempty"`
+	Score          float64 `json:"score,omitempty"`
 }

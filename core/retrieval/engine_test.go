@@ -76,12 +76,12 @@ func TestVectorRetrieve(t *testing.T) {
 			queryEmbedding[i] = 0.15 // Between the two embeddings
 		}
 
-		results, err := engine.VectorRetrieve(context.Background(), queryEmbedding, config)
+		results, err := engine.Similarity(context.Background(), queryEmbedding, config)
 
 		assert.NoError(t, err, "Expected VectorRetrieve to not return an error")
 		assert.NotEmpty(t, results, "Expected at least one result")
-		assert.Equal(t, "vector", results[0].RetrievalMethod, "Expected retrieval method to be 'vector'")
-		assert.Equal(t, 0, results[0].GraphDistance, "Expected graph distance to be 0 for vector results")
+		// assert.Equal(t, "vector", results[0].RetrievalMethod, "Expected retrieval method to be 'vector'")
+		assert.Equal(t, 0, results[0].Distance, "Expected graph distance to be 0 for vector results")
 	})
 
 	// Cleanup

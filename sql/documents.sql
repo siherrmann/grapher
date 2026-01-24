@@ -64,6 +64,51 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Update document
+CREATE OR REPLACE FUNCTION update_document(
+    input_rid UUID,
+    input_title TEXT,
+    input_source TEXT,
+    input_metadata JSONB
+)
+RETURNS TABLE (
+    output_id BIGINT,
+    output_rid UUID,
+    output_title TEXT,
+    output_source TEXT,
+    output_metadata JSONB,
+    output_created_at TIMESTAMP WITH TIME ZONE,
+    output_updated_at TIMESTAMP WITH TIME ZONE
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    UPDATE documents
+    SET 
+        title = input_title,
+        source = input_source,
+        metadata = input_metadata
+    WHERE rid = input_rid
+    RETURNING 
+        id,
+        rid,
+        title, 
+        source, 
+        metadata, 
+        created_at, 
+        updated_at;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Delete document (cascades to chunks)
+CREATE OR REPLACE FUNCTION delete_document(input_rid UUID)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM documents WHERE rid = input_rid;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Select document by ID
 CREATE OR REPLACE FUNCTION select_document(input_rid UUID)
 RETURNS TABLE (
@@ -154,50 +199,5 @@ BEGIN
         OR source ILIKE '%' || input_search || '%'
     ORDER BY created_at DESC
     LIMIT input_limit;
-END;
-$$ LANGUAGE plpgsql;
-
--- Update document
-CREATE OR REPLACE FUNCTION update_document(
-    input_rid UUID,
-    input_title TEXT,
-    input_source TEXT,
-    input_metadata JSONB
-)
-RETURNS TABLE (
-    output_id BIGINT,
-    output_rid UUID,
-    output_title TEXT,
-    output_source TEXT,
-    output_metadata JSONB,
-    output_created_at TIMESTAMP WITH TIME ZONE,
-    output_updated_at TIMESTAMP WITH TIME ZONE
-)
-AS $$
-BEGIN
-    RETURN QUERY
-    UPDATE documents
-    SET 
-        title = input_title,
-        source = input_source,
-        metadata = input_metadata
-    WHERE rid = input_rid
-    RETURNING 
-        id,
-        rid,
-        title, 
-        source, 
-        metadata, 
-        created_at, 
-        updated_at;
-END;
-$$ LANGUAGE plpgsql;
-
--- Delete document (cascades to chunks)
-CREATE OR REPLACE FUNCTION delete_document(input_rid UUID)
-RETURNS VOID
-AS $$
-BEGIN
-    DELETE FROM documents WHERE rid = input_rid;
 END;
 $$ LANGUAGE plpgsql;

@@ -17,7 +17,7 @@ func TestChunksNewChunksDBHandler(t *testing.T) {
 		_, err := NewDocumentsDBHandler(database, true)
 		require.NoError(t, err, "Expected NewDocumentsDBHandler to not return an error")
 
-		chunksDbHandler, err := NewChunksDBHandler(database, nil, 384, true)
+		chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
 		assert.NoError(t, err, "Expected NewChunksDBHandler to not return an error")
 		require.NotNil(t, chunksDbHandler, "Expected NewChunksDBHandler to return a non-nil instance")
 		require.NotNil(t, chunksDbHandler.db, "Expected NewChunksDBHandler to have a non-nil database instance")
@@ -25,7 +25,7 @@ func TestChunksNewChunksDBHandler(t *testing.T) {
 	})
 
 	t.Run("Invalid call NewChunksDBHandler with nil database", func(t *testing.T) {
-		_, err := NewChunksDBHandler(nil, nil, 384, false)
+		_, err := NewChunksDBHandler(nil, 384, false)
 		assert.Error(t, err, "Expected error when creating ChunksDBHandler with nil database")
 		assert.Contains(t, err.Error(), "database connection is nil", "Expected specific error message for nil database connection")
 	})
@@ -37,7 +37,7 @@ func TestChunksInsert(t *testing.T) {
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
 	require.NoError(t, err, "Expected NewDocumentsDBHandler to not return an error")
 
-	chunksDbHandler, err := NewChunksDBHandler(database, nil, 384, true)
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
 	require.NoError(t, err, "Expected NewChunksDBHandler to not return an error")
 
 	// Create a document first
@@ -99,13 +99,13 @@ func TestChunksInsert(t *testing.T) {
 	documentsDbHandler.DeleteDocument(doc.RID)
 }
 
-func TestChunksGet(t *testing.T) {
+func TestSelectChunk(t *testing.T) {
 	database := initDB(t)
 
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
 	require.NoError(t, err, "Expected NewDocumentsDBHandler to not return an error")
 
-	chunksDbHandler, err := NewChunksDBHandler(database, nil, 384, true)
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
 	require.NoError(t, err, "Expected NewChunksDBHandler to not return an error")
 
 	// Create a document and chunk
@@ -138,13 +138,13 @@ func TestChunksGet(t *testing.T) {
 	documentsDbHandler.DeleteDocument(doc.RID)
 }
 
-func TestChunksGetByDocument(t *testing.T) {
+func TestSelectChunksByDocument(t *testing.T) {
 	database := initDB(t)
 
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
 	require.NoError(t, err)
 
-	chunksDbHandler, err := NewChunksDBHandler(database, nil, 384, true)
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
 	require.NoError(t, err)
 
 	// Create a document
@@ -173,7 +173,7 @@ func TestChunksGetByDocument(t *testing.T) {
 	}
 
 	// Test GetByDocument
-	retrievedChunks, err := chunksDbHandler.SelectAllChunksByDocument(doc.RID)
+	retrievedChunks, err := chunksDbHandler.SelectChunksByDocument(doc.RID)
 	assert.NoError(t, err, "Expected GetByDocument to not return an error")
 	assert.Len(t, retrievedChunks, chunkCount, "Expected to retrieve all chunks")
 
@@ -184,13 +184,77 @@ func TestChunksGetByDocument(t *testing.T) {
 	documentsDbHandler.DeleteDocument(doc.RID)
 }
 
+func TestSelectChunksByEntity(t *testing.T) {
+	database := initDB(t)
+
+	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
+	require.NoError(t, err)
+
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
+	require.NoError(t, err)
+
+	entitiesDbHandler, err := NewEntitiesDBHandler(database, true)
+	require.NoError(t, err)
+
+	edgesDbHandler, err := NewEdgesDBHandler(database, true)
+	require.NoError(t, err)
+
+	// Create a document
+	doc := &model.Document{
+		ID:       1,
+		Title:    "Test Document",
+		Source:   "test.txt",
+		Metadata: map[string]interface{}{},
+	}
+	err = documentsDbHandler.InsertDocument(doc)
+	require.NoError(t, err)
+
+	// Create an entity
+	entity := &model.Entity{
+		Name:     "Test Entity",
+		Type:     "Test Type",
+		Metadata: map[string]interface{}{},
+	}
+	err = entitiesDbHandler.InsertEntity(entity)
+	require.NoError(t, err)
+
+	// Create a chunk
+	chunk := &model.Chunk{
+		DocumentID: doc.ID,
+		Content:    "This chunk mentions Test Entity.",
+		Path:       "root",
+		Metadata:   map[string]interface{}{},
+	}
+	err = chunksDbHandler.InsertChunk(chunk)
+	require.NoError(t, err)
+
+	// Create an edge connecting the entity and the chunk
+	edge := &model.Edge{
+		SourceEntityID: &entity.ID,
+		TargetChunkID:  &chunk.ID,
+		EdgeType:       model.EdgeTypeEntityMention,
+		Metadata:       map[string]interface{}{},
+	}
+	err = edgesDbHandler.InsertEdge(edge)
+	require.NoError(t, err)
+
+	// Test SelectChunksByEntity
+	retrievedChunks, err := chunksDbHandler.SelectChunksByEntity(entity.ID)
+	assert.NoError(t, err, "Expected SelectChunksByEntity to not return an error")
+	assert.Len(t, retrievedChunks, 1, "Expected to retrieve one chunk mentioning the entity")
+	assert.Equal(t, chunk.ID, retrievedChunks[0].ID, "Expected retrieved chunk ID to match")
+
+	// Cleanup
+	documentsDbHandler.DeleteDocument(doc.RID)
+}
+
 func TestChunksSearchBySimilarity(t *testing.T) {
 	database := initDB(t)
 
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
 	require.NoError(t, err)
 
-	chunksDbHandler, err := NewChunksDBHandler(database, nil, 384, true)
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
 	require.NoError(t, err)
 
 	// Create a document
@@ -245,7 +309,7 @@ func TestChunksDelete(t *testing.T) {
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
 	require.NoError(t, err)
 
-	chunksDbHandler, err := NewChunksDBHandler(database, nil, 384, true)
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
 	require.NoError(t, err)
 
 	// Create a document and chunk
@@ -284,7 +348,7 @@ func TestChunksUpdateEmbedding(t *testing.T) {
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
 	require.NoError(t, err)
 
-	chunksDbHandler, err := NewChunksDBHandler(database, nil, 384, true)
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
 	require.NoError(t, err)
 
 	// Create a document and chunk
@@ -316,7 +380,8 @@ func TestChunksUpdateEmbedding(t *testing.T) {
 	for i := range newEmbedding {
 		newEmbedding[i] = 0.5
 	}
-	err = chunksDbHandler.UpdateChunkEmbedding(chunk.ID, newEmbedding)
+	chunk.Embedding = newEmbedding
+	err = chunksDbHandler.UpdateChunk(chunk)
 	assert.NoError(t, err, "Expected UpdateEmbedding to not return an error")
 
 	// Verify update
@@ -335,7 +400,7 @@ func TestChunksSelectSiblingChunks(t *testing.T) {
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
 	require.NoError(t, err)
 
-	chunksDbHandler, err := NewChunksDBHandler(database, nil, 384, true)
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
 	require.NoError(t, err)
 
 	// Create a document
@@ -422,13 +487,13 @@ func TestChunksSelectSiblingChunks(t *testing.T) {
 	documentsDbHandler.DeleteDocument(doc.RID)
 }
 
-func TestSelectAllChunksByPathDescendant(t *testing.T) {
+func TestSelectChunksByPathDescendant(t *testing.T) {
 	database := initDB(t)
 
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
 	require.NoError(t, err)
 
-	chunksDbHandler, err := NewChunksDBHandler(database, nil, 384, true)
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
 	require.NoError(t, err)
 
 	// Create a document
@@ -474,13 +539,13 @@ func TestSelectAllChunksByPathDescendant(t *testing.T) {
 	}
 
 	t.Run("Get all descendants", func(t *testing.T) {
-		descendants, err := chunksDbHandler.SelectAllChunksByPathDescendant("root")
+		descendants, err := chunksDbHandler.SelectChunksByPathDescendant("root")
 		assert.NoError(t, err)
 		assert.Len(t, descendants, 4, "Expected 4 nodes (root + 3 descendants)")
 	})
 
 	t.Run("Get descendants of section", func(t *testing.T) {
-		descendants, err := chunksDbHandler.SelectAllChunksByPathDescendant("root.section1")
+		descendants, err := chunksDbHandler.SelectChunksByPathDescendant("root.section1")
 		assert.NoError(t, err)
 		assert.Len(t, descendants, 2, "Expected 2 nodes (section1 + para1)")
 		// Should include section1 and its child
@@ -493,7 +558,7 @@ func TestSelectAllChunksByPathDescendant(t *testing.T) {
 	})
 
 	t.Run("Get descendants of leaf", func(t *testing.T) {
-		descendants, err := chunksDbHandler.SelectAllChunksByPathDescendant("root.section1.para1")
+		descendants, err := chunksDbHandler.SelectChunksByPathDescendant("root.section1.para1")
 		assert.NoError(t, err)
 		assert.Len(t, descendants, 1, "Expected 1 node (the leaf itself)")
 		assert.Equal(t, "root.section1.para1", descendants[0].Path)
@@ -506,13 +571,13 @@ func TestSelectAllChunksByPathDescendant(t *testing.T) {
 	documentsDbHandler.DeleteDocument(doc.RID)
 }
 
-func TestSelectAllChunksByPathAncestor(t *testing.T) {
+func TestSelectChunksByPathAncestor(t *testing.T) {
 	database := initDB(t)
 
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
 	require.NoError(t, err)
 
-	chunksDbHandler, err := NewChunksDBHandler(database, nil, 384, true)
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
 	require.NoError(t, err)
 
 	// Create a document
@@ -552,7 +617,7 @@ func TestSelectAllChunksByPathAncestor(t *testing.T) {
 	}
 
 	t.Run("Get all ancestors of leaf", func(t *testing.T) {
-		ancestors, err := chunksDbHandler.SelectAllChunksByPathAncestor("root.section1.para1")
+		ancestors, err := chunksDbHandler.SelectChunksByPathAncestor("root.section1.para1")
 		assert.NoError(t, err)
 		assert.Len(t, ancestors, 3, "Expected 3 nodes (self + 2 ancestors)")
 
@@ -566,7 +631,7 @@ func TestSelectAllChunksByPathAncestor(t *testing.T) {
 	})
 
 	t.Run("Get ancestors of section", func(t *testing.T) {
-		ancestors, err := chunksDbHandler.SelectAllChunksByPathAncestor("root.section1")
+		ancestors, err := chunksDbHandler.SelectChunksByPathAncestor("root.section1")
 		assert.NoError(t, err)
 		assert.Len(t, ancestors, 2, "Expected 2 nodes (self + root)")
 		paths := make(map[string]bool)
@@ -578,7 +643,7 @@ func TestSelectAllChunksByPathAncestor(t *testing.T) {
 	})
 
 	t.Run("Get ancestors of root", func(t *testing.T) {
-		ancestors, err := chunksDbHandler.SelectAllChunksByPathAncestor("root")
+		ancestors, err := chunksDbHandler.SelectChunksByPathAncestor("root")
 		assert.NoError(t, err)
 		assert.Len(t, ancestors, 1, "Expected 1 node (root itself)")
 		assert.Equal(t, "root", ancestors[0].Path)
@@ -597,7 +662,7 @@ func TestSelectChunksBySimilarityWithContext(t *testing.T) {
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
 	require.NoError(t, err)
 
-	chunksDbHandler, err := NewChunksDBHandler(database, nil, 384, true)
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
 	require.NoError(t, err)
 
 	// Create a document

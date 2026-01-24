@@ -3,7 +3,6 @@ package pipeline
 import (
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/siherrmann/grapher/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -103,7 +102,7 @@ func TestDefaultRelationExtractor(t *testing.T) {
 	t.Run("Detect entity co-occurrence", func(t *testing.T) {
 		// Create mock entities with positions
 		entity1 := &model.Entity{
-			ID:   uuid.New(),
+			ID:   1,
 			Name: "John Smith",
 			Type: "PERSON",
 			Metadata: map[string]interface{}{
@@ -112,7 +111,7 @@ func TestDefaultRelationExtractor(t *testing.T) {
 			},
 		}
 		entity2 := &model.Entity{
-			ID:   uuid.New(),
+			ID:   2,
 			Name: "Microsoft",
 			Type: "ORGANIZATION",
 			Metadata: map[string]interface{}{
@@ -144,7 +143,7 @@ func TestDefaultRelationExtractor(t *testing.T) {
 
 	t.Run("Ignore distant entities", func(t *testing.T) {
 		entity1 := &model.Entity{
-			ID:   uuid.New(),
+			ID:   1,
 			Name: "Entity1",
 			Type: "PERSON",
 			Metadata: map[string]interface{}{
@@ -153,7 +152,7 @@ func TestDefaultRelationExtractor(t *testing.T) {
 			},
 		}
 		entity2 := &model.Entity{
-			ID:   uuid.New(),
+			ID:   2,
 			Name: "Entity2",
 			Type: "ORGANIZATION",
 			Metadata: map[string]interface{}{

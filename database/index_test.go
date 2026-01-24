@@ -16,7 +16,7 @@ func TestChangeIndexType(t *testing.T) {
 	_, err := NewDocumentsDBHandler(database, true)
 	require.NoError(t, err, "Expected NewDocumentsDBHandler to not return an error")
 
-	chunksDbHandler, err := NewChunksDBHandler(database, nil, 384, true)
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
 	require.NoError(t, err, "Expected NewChunksDBHandler to not return an error")
 
 	ctx := context.Background()

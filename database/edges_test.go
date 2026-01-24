@@ -13,6 +13,15 @@ func TestEdgesNewEdgesDBHandler(t *testing.T) {
 	database := initDB(t)
 
 	t.Run("Valid call NewEdgesDBHandler", func(t *testing.T) {
+		_, err := NewDocumentsDBHandler(database, true)
+		require.NoError(t, err)
+
+		_, err = NewChunksDBHandler(database, 384, true)
+		require.NoError(t, err)
+
+		_, err = NewEntitiesDBHandler(database, true)
+		require.NoError(t, err)
+
 		edgesDbHandler, err := NewEdgesDBHandler(database, true)
 		assert.NoError(t, err, "Expected NewEdgesDBHandler to not return an error")
 		require.NotNil(t, edgesDbHandler, "Expected NewEdgesDBHandler to return a non-nil instance")
@@ -21,7 +30,16 @@ func TestEdgesNewEdgesDBHandler(t *testing.T) {
 	})
 
 	t.Run("Invalid call NewEdgesDBHandler with nil database", func(t *testing.T) {
-		_, err := NewEdgesDBHandler(nil, false)
+		_, err := NewDocumentsDBHandler(database, true)
+		require.NoError(t, err)
+
+		_, err = NewChunksDBHandler(database, 384, true)
+		require.NoError(t, err)
+
+		_, err = NewEntitiesDBHandler(database, true)
+		require.NoError(t, err)
+
+		_, err = NewEdgesDBHandler(nil, false)
 		assert.Error(t, err, "Expected error when creating EdgesDBHandler with nil database")
 		assert.Contains(t, err.Error(), "database connection is nil", "Expected specific error message for nil database connection")
 	})
@@ -30,13 +48,13 @@ func TestEdgesNewEdgesDBHandler(t *testing.T) {
 func TestEdgesInsert(t *testing.T) {
 	database := initDB(t)
 
-	edgesDbHandler, err := NewEdgesDBHandler(database, true)
-	require.NoError(t, err)
-
-	chunksDbHandler, err := NewChunksDBHandler(database, edgesDbHandler, 384, true)
-	require.NoError(t, err)
-
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
+	require.NoError(t, err)
+
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
+	require.NoError(t, err)
+
+	edgesDbHandler, err := NewEdgesDBHandler(database, true)
 	require.NoError(t, err)
 
 	// Create a document and chunks
@@ -94,13 +112,13 @@ func TestEdgesInsert(t *testing.T) {
 func TestEdgesGet(t *testing.T) {
 	database := initDB(t)
 
-	edgesDbHandler, err := NewEdgesDBHandler(database, true)
-	require.NoError(t, err)
-
-	chunksDbHandler, err := NewChunksDBHandler(database, edgesDbHandler, 384, true)
-	require.NoError(t, err)
-
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
+	require.NoError(t, err)
+
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
+	require.NoError(t, err)
+
+	edgesDbHandler, err := NewEdgesDBHandler(database, true)
 	require.NoError(t, err)
 
 	// Create document and chunks
@@ -158,13 +176,13 @@ func TestEdgesGet(t *testing.T) {
 func TestEdgesGetFromChunk(t *testing.T) {
 	database := initDB(t)
 
-	edgesDbHandler, err := NewEdgesDBHandler(database, true)
-	require.NoError(t, err)
-
-	chunksDbHandler, err := NewChunksDBHandler(database, edgesDbHandler, 384, true)
-	require.NoError(t, err)
-
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
+	require.NoError(t, err)
+
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
+	require.NoError(t, err)
+
+	edgesDbHandler, err := NewEdgesDBHandler(database, true)
 	require.NoError(t, err)
 
 	// Setup
@@ -241,13 +259,13 @@ func TestEdgesGetFromChunk(t *testing.T) {
 func TestEdgesGetToChunk(t *testing.T) {
 	database := initDB(t)
 
-	edgesDbHandler, err := NewEdgesDBHandler(database, true)
-	require.NoError(t, err)
-
-	chunksDbHandler, err := NewChunksDBHandler(database, edgesDbHandler, 384, true)
-	require.NoError(t, err)
-
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
+	require.NoError(t, err)
+
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
+	require.NoError(t, err)
+
+	edgesDbHandler, err := NewEdgesDBHandler(database, true)
 	require.NoError(t, err)
 
 	// Setup
@@ -318,13 +336,13 @@ func TestEdgesGetToChunk(t *testing.T) {
 func TestEdgesDelete(t *testing.T) {
 	database := initDB(t)
 
-	edgesDbHandler, err := NewEdgesDBHandler(database, true)
-	require.NoError(t, err)
-
-	chunksDbHandler, err := NewChunksDBHandler(database, edgesDbHandler, 384, true)
-	require.NoError(t, err)
-
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
+	require.NoError(t, err)
+
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
+	require.NoError(t, err)
+
+	edgesDbHandler, err := NewEdgesDBHandler(database, true)
 	require.NoError(t, err)
 
 	// Setup
@@ -377,13 +395,13 @@ func TestEdgesDelete(t *testing.T) {
 func TestEdgesUpdateWeight(t *testing.T) {
 	database := initDB(t)
 
-	edgesDbHandler, err := NewEdgesDBHandler(database, true)
-	require.NoError(t, err)
-
-	chunksDbHandler, err := NewChunksDBHandler(database, edgesDbHandler, 384, true)
-	require.NoError(t, err)
-
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
+	require.NoError(t, err)
+
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
+	require.NoError(t, err)
+
+	edgesDbHandler, err := NewEdgesDBHandler(database, true)
 	require.NoError(t, err)
 
 	// Setup
@@ -442,7 +460,7 @@ func TestSelectEdgesConnectedToChunk(t *testing.T) {
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
 	require.NoError(t, err)
 
-	chunksDbHandler, err := NewChunksDBHandler(database, nil, 384, true)
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
 	require.NoError(t, err)
 
 	edgesDbHandler, err := NewEdgesDBHandler(database, true)
@@ -528,13 +546,13 @@ func TestSelectEdgesFromEntity(t *testing.T) {
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
 	require.NoError(t, err)
 
-	chunksDbHandler, err := NewChunksDBHandler(database, nil, 384, true)
-	require.NoError(t, err)
-
-	edgesDbHandler, err := NewEdgesDBHandler(database, true)
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
 	require.NoError(t, err)
 
 	entitiesDbHandler, err := NewEntitiesDBHandler(database, true)
+	require.NoError(t, err)
+
+	edgesDbHandler, err := NewEdgesDBHandler(database, true)
 	require.NoError(t, err)
 
 	// Create a document
@@ -600,13 +618,13 @@ func TestSelectEdgesToEntity(t *testing.T) {
 	documentsDbHandler, err := NewDocumentsDBHandler(database, true)
 	require.NoError(t, err)
 
-	chunksDbHandler, err := NewChunksDBHandler(database, nil, 384, true)
-	require.NoError(t, err)
-
-	edgesDbHandler, err := NewEdgesDBHandler(database, true)
+	chunksDbHandler, err := NewChunksDBHandler(database, 384, true)
 	require.NoError(t, err)
 
 	entitiesDbHandler, err := NewEntitiesDBHandler(database, true)
+	require.NoError(t, err)
+
+	edgesDbHandler, err := NewEdgesDBHandler(database, true)
 	require.NoError(t, err)
 
 	// Create a document

@@ -25,6 +25,7 @@ type QueryConfig struct {
 	VectorWeight    float64 `json:"vector_weight"`    // Weight for similarity score
 	GraphWeight     float64 `json:"graph_weight"`     // Weight for graph distance
 	HierarchyWeight float64 `json:"hierarchy_weight"` // Weight for hierarchy distance
+	EntityWeight    float64 `json:"entity_weight"`    // Weight for entity mentions
 }
 
 // DefaultQueryConfig returns a sensible default configuration
@@ -41,5 +42,6 @@ func DefaultQueryConfig() QueryConfig {
 		VectorWeight:        0.6,
 		GraphWeight:         0.3,
 		HierarchyWeight:     0.1,
+		EntityWeight:        0.5, // Boost for entity mentions
 	}
 }

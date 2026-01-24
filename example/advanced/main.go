@@ -193,7 +193,7 @@ func main() {
 	if len(vectorResults) > 0 {
 		fmt.Println("\n=== 7. Graph Traversal (BFS) ===")
 		sourceChunkID := vectorResults[0].Chunk.ID
-		fmt.Printf("Starting BFS from chunk: %s\n", sourceChunkID)
+		fmt.Printf("Starting BFS from chunk: %d\n", sourceChunkID)
 
 		traversalResults, err := g.BFSTraversal(ctx, sourceChunkID, 2, []model.EdgeType{}, true)
 		if err != nil {

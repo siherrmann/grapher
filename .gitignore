@@ -28,5 +28,6 @@ go.work
 .env
 .env.local
 
-# Models
+# Test data
 models/
+data/

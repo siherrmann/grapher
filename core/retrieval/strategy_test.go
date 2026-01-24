@@ -10,21 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewVectorOnlyStrategy(t *testing.T) {
-	t.Run("Create vector-only strategy", func(t *testing.T) {
-		chunks, edges, entities := initHandlers(t)
-		engine := NewEngine(chunks, edges, entities)
-		strategy := NewVectorOnlyStrategy(engine)
-
-		require.NotNil(t, strategy)
-		assert.NotNil(t, strategy.engine)
-	})
-}
-
-func TestVectorOnlyStrategyRetrieve(t *testing.T) {
+func TestSimilarity(t *testing.T) {
 	chunks, edges, entities := initHandlers(t)
 	engine := NewEngine(chunks, edges, entities)
-	strategy := NewVectorOnlyStrategy(engine)
 
 	// Create test document
 	db := initDB(t)
@@ -56,44 +44,31 @@ func TestVectorOnlyStrategyRetrieve(t *testing.T) {
 	err = chunks.InsertChunk(chunk1)
 	require.NoError(t, err)
 
-	t.Run("Vector-only retrieve", func(t *testing.T) {
-		config := &model.QueryConfig{
-			TopK:                10,
-			SimilarityThreshold: 0.0,
-		}
+	// Perform similarity search
+	config := &model.QueryConfig{
+		TopK:                10,
+		SimilarityThreshold: 0.0,
+	}
 
-		queryEmbedding := make([]float32, 384)
-		for i := range queryEmbedding {
-			queryEmbedding[i] = 0.5
-		}
+	queryEmbedding := make([]float32, 384)
+	for i := range queryEmbedding {
+		queryEmbedding[i] = 0.5
+	}
 
-		results, err := strategy.Retrieve(context.Background(), queryEmbedding, config)
+	results, err := engine.Similarity(context.Background(), queryEmbedding, config)
 
-		assert.NoError(t, err)
-		require.NotEmpty(t, results)
-		assert.Equal(t, "vector", results[0].RetrievalMethod)
-	})
+	assert.NoError(t, err)
+	require.NotEmpty(t, results)
+	// assert.Equal(t, "vector", results[0].RetrievalMethod)
 
 	// Cleanup
 	chunks.DeleteChunk(chunk1.ID)
 	documentsHandler.DeleteDocument(doc.RID)
 }
 
-func TestNewContextualStrategy(t *testing.T) {
-	t.Run("Create contextual strategy", func(t *testing.T) {
-		chunks, edges, entities := initHandlers(t)
-		engine := NewEngine(chunks, edges, entities)
-		strategy := NewContextualStrategy(engine)
-
-		require.NotNil(t, strategy)
-		assert.NotNil(t, strategy.engine)
-	})
-}
-
 func TestContextualStrategyRetrieve(t *testing.T) {
 	chunks, edges, entities := initHandlers(t)
 	engine := NewEngine(chunks, edges, entities)
-	strategy := NewContextualStrategy(engine)
 
 	// Create test document
 	db := initDB(t)
@@ -146,46 +121,26 @@ func TestContextualStrategyRetrieve(t *testing.T) {
 	err = edges.InsertEdge(edge)
 	require.NoError(t, err)
 
-	t.Run("Contextual retrieve with neighbors and hierarchy", func(t *testing.T) {
-		config := &model.QueryConfig{
-			TopK:                10,
-			SimilarityThreshold: 0.0,
-			GraphWeight:         0.5,
-			HierarchyWeight:     0.3,
-			IncludeAncestors:    true,
-			IncludeDescendants:  true,
-		}
+	// Create contextual strategy
+	config := &model.QueryConfig{
+		TopK:                10,
+		SimilarityThreshold: 0.0,
+		GraphWeight:         0.5,
+		HierarchyWeight:     0.3,
+		IncludeAncestors:    true,
+		IncludeDescendants:  true,
+	}
 
-		queryEmbedding := make([]float32, 384)
-		for i := range queryEmbedding {
-			queryEmbedding[i] = 0.5
-		}
+	queryEmbedding := make([]float32, 384)
+	for i := range queryEmbedding {
+		queryEmbedding[i] = 0.5
+	}
 
-		results, err := strategy.Retrieve(context.Background(), queryEmbedding, config)
+	results, err := engine.Contextual(context.Background(), queryEmbedding, config)
 
-		assert.NoError(t, err)
-		require.NotEmpty(t, results)
-		assert.GreaterOrEqual(t, len(results), 1)
-	})
-
-	t.Run("Contextual retrieve with only vector", func(t *testing.T) {
-		config := &model.QueryConfig{
-			TopK:                10,
-			SimilarityThreshold: 0.0,
-			GraphWeight:         0.0,
-			HierarchyWeight:     0.0,
-		}
-
-		queryEmbedding := make([]float32, 384)
-		for i := range queryEmbedding {
-			queryEmbedding[i] = 0.5
-		}
-
-		results, err := strategy.Retrieve(context.Background(), queryEmbedding, config)
-
-		assert.NoError(t, err)
-		require.NotEmpty(t, results)
-	})
+	assert.NoError(t, err)
+	require.NotEmpty(t, results)
+	assert.GreaterOrEqual(t, len(results), 1)
 
 	// Cleanup
 	edges.DeleteEdge(edge.ID)

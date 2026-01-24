@@ -5,11 +5,11 @@ CREATE OR REPLACE FUNCTION init_edges() RETURNS VOID AS $$
 BEGIN
     -- Create edges table
     CREATE TABLE IF NOT EXISTS edges (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        source_chunk_id UUID,
-        target_chunk_id UUID,
-        source_entity_id UUID,
-        target_entity_id UUID,
+        id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        source_chunk_id BIGINT REFERENCES chunks(id) ON DELETE CASCADE,
+        target_chunk_id BIGINT REFERENCES chunks(id) ON DELETE CASCADE,
+        source_entity_id BIGINT REFERENCES entities(id) ON DELETE CASCADE,
+        target_entity_id BIGINT REFERENCES entities(id) ON DELETE CASCADE,
         edge_type edge_type NOT NULL,
         weight FLOAT DEFAULT 1.0,
         bidirectional BOOLEAN DEFAULT FALSE,
@@ -36,21 +36,21 @@ $$ LANGUAGE plpgsql;
 
 -- Insert a new edge
 CREATE OR REPLACE FUNCTION insert_edge(
-    input_source_chunk_id UUID,
-    input_target_chunk_id UUID,
-    input_source_entity_id UUID,
-    input_target_entity_id UUID,
+    input_source_chunk_id BIGINT,
+    input_target_chunk_id BIGINT,
+    input_source_entity_id BIGINT,
+    input_target_entity_id BIGINT,
     input_edge_type edge_type,
     input_weight FLOAT,
     input_bidirectional BOOLEAN,
     input_metadata JSONB
 )
 RETURNS TABLE (
-    output_id UUID,
-    output_source_chunk_id UUID,
-    output_target_chunk_id UUID,
-    output_source_entity_id UUID,
-    output_target_entity_id UUID,
+    output_id BIGINT,
+    output_source_chunk_id BIGINT,
+    output_target_chunk_id BIGINT,
+    output_source_entity_id BIGINT,
+    output_target_entity_id BIGINT,
     output_edge_type edge_type,
     output_weight FLOAT,
     output_bidirectional BOOLEAN,
@@ -94,14 +94,42 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Select edge by ID
-CREATE OR REPLACE FUNCTION select_edge(input_id UUID)
+-- Update edge weight
+CREATE OR REPLACE FUNCTION update_edge_weight(
+    input_id BIGINT,
+    input_weight FLOAT
+)
 RETURNS TABLE (
-    output_id UUID,
-    output_source_chunk_id UUID,
-    output_target_chunk_id UUID,
-    output_source_entity_id UUID,
-    output_target_entity_id UUID,
+    output_id BIGINT,
+    output_weight FLOAT
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    UPDATE edges
+    SET weight = input_weight
+    WHERE id = input_id
+    RETURNING id, weight;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Delete edge
+CREATE OR REPLACE FUNCTION delete_edge(input_id BIGINT)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM edges WHERE id = input_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Select edge by ID
+CREATE OR REPLACE FUNCTION select_edge(input_id BIGINT)
+RETURNS TABLE (
+    output_id BIGINT,
+    output_source_chunk_id BIGINT,
+    output_target_chunk_id BIGINT,
+    output_source_entity_id BIGINT,
+    output_target_entity_id BIGINT,
     output_edge_type edge_type,
     output_weight FLOAT,
     output_bidirectional BOOLEAN,
@@ -129,15 +157,15 @@ $$ LANGUAGE plpgsql;
 
 -- Select edges from a chunk (outgoing)
 CREATE OR REPLACE FUNCTION select_edges_from_chunk(
-    input_chunk_id UUID,
+    input_chunk_id BIGINT,
     input_edge_type edge_type DEFAULT NULL
 )
 RETURNS TABLE (
-    output_id UUID,
-    output_source_chunk_id UUID,
-    output_target_chunk_id UUID,
-    output_source_entity_id UUID,
-    output_target_entity_id UUID,
+    output_id BIGINT,
+    output_source_chunk_id BIGINT,
+    output_target_chunk_id BIGINT,
+    output_source_entity_id BIGINT,
+    output_target_entity_id BIGINT,
     output_edge_type edge_type,
     output_weight FLOAT,
     output_bidirectional BOOLEAN,
@@ -167,15 +195,15 @@ $$ LANGUAGE plpgsql;
 
 -- Select edges to a chunk (incoming)
 CREATE OR REPLACE FUNCTION select_edges_to_chunk(
-    input_chunk_id UUID,
+    input_chunk_id BIGINT,
     input_edge_type edge_type DEFAULT NULL
 )
 RETURNS TABLE (
-    output_id UUID,
-    output_source_chunk_id UUID,
-    output_target_chunk_id UUID,
-    output_source_entity_id UUID,
-    output_target_entity_id UUID,
+    output_id BIGINT,
+    output_source_chunk_id BIGINT,
+    output_target_chunk_id BIGINT,
+    output_source_entity_id BIGINT,
+    output_target_entity_id BIGINT,
     output_edge_type edge_type,
     output_weight FLOAT,
     output_bidirectional BOOLEAN,
@@ -205,15 +233,15 @@ $$ LANGUAGE plpgsql;
 
 -- Select edges connected to a chunk (both directions, considering bidirectional)
 CREATE OR REPLACE FUNCTION select_edges_connected_to_chunk(
-    input_chunk_id UUID,
+    input_chunk_id BIGINT,
     input_edge_type edge_type DEFAULT NULL
 )
 RETURNS TABLE (
-    output_id UUID,
-    output_source_chunk_id UUID,
-    output_target_chunk_id UUID,
-    output_source_entity_id UUID,
-    output_target_entity_id UUID,
+    output_id BIGINT,
+    output_source_chunk_id BIGINT,
+    output_target_chunk_id BIGINT,
+    output_source_entity_id BIGINT,
+    output_target_entity_id BIGINT,
     output_edge_type edge_type,
     output_weight FLOAT,
     output_bidirectional BOOLEAN,
@@ -262,15 +290,15 @@ $$ LANGUAGE plpgsql;
 
 -- Select edges from an entity
 CREATE OR REPLACE FUNCTION select_edges_from_entity(
-    input_entity_id UUID,
+    input_entity_id BIGINT,
     input_edge_type edge_type DEFAULT NULL
 )
 RETURNS TABLE (
-    output_id UUID,
-    output_source_chunk_id UUID,
-    output_target_chunk_id UUID,
-    output_source_entity_id UUID,
-    output_target_entity_id UUID,
+    output_id BIGINT,
+    output_source_chunk_id BIGINT,
+    output_target_chunk_id BIGINT,
+    output_source_entity_id BIGINT,
+    output_target_entity_id BIGINT,
     output_edge_type edge_type,
     output_weight FLOAT,
     output_bidirectional BOOLEAN,
@@ -300,15 +328,15 @@ $$ LANGUAGE plpgsql;
 
 -- Select edges to an entity
 CREATE OR REPLACE FUNCTION select_edges_to_entity(
-    input_entity_id UUID,
+    input_entity_id BIGINT,
     input_edge_type edge_type DEFAULT NULL
 )
 RETURNS TABLE (
-    output_id UUID,
-    output_source_chunk_id UUID,
-    output_target_chunk_id UUID,
-    output_source_entity_id UUID,
-    output_target_entity_id UUID,
+    output_id BIGINT,
+    output_source_chunk_id BIGINT,
+    output_target_chunk_id BIGINT,
+    output_source_entity_id BIGINT,
+    output_target_entity_id BIGINT,
     output_edge_type edge_type,
     output_weight FLOAT,
     output_bidirectional BOOLEAN,
@@ -336,45 +364,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Delete edge
-CREATE OR REPLACE FUNCTION delete_edge(input_id UUID)
-RETURNS VOID
-AS $$
-BEGIN
-    DELETE FROM edges WHERE id = input_id;
-END;
-$$ LANGUAGE plpgsql;
-
--- Update edge weight
-CREATE OR REPLACE FUNCTION update_edge_weight(
-    input_id UUID,
-    input_weight FLOAT
-)
-RETURNS TABLE (
-    output_id UUID,
-    output_weight FLOAT
-)
-AS $$
-BEGIN
-    RETURN QUERY
-    UPDATE edges
-    SET weight = input_weight
-    WHERE id = input_id
-    RETURNING id, weight;
-END;
-$$ LANGUAGE plpgsql;
-
 -- BFS traversal from a chunk
 -- Returns chunks reachable within max_depth hops
 CREATE OR REPLACE FUNCTION traverse_bfs_from_chunk(
-    input_start_chunk_id UUID,
+    input_start_chunk_id BIGINT,
     input_max_depth INT,
     input_edge_type edge_type DEFAULT NULL
 )
 RETURNS TABLE (
-    output_chunk_id UUID,
+    output_chunk_id BIGINT,
     output_depth INT,
-    output_path UUID[]
+    output_path BIGINT[]
 )
 AS $$
 BEGIN

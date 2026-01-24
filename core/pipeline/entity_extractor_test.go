@@ -11,13 +11,13 @@ func TestDefaultEntityExtractor(t *testing.T) {
 	// Note: DefaultEntityExtractor uses hugot which requires downloading models
 	// This test will download the distilbert-NER model if not already present
 	t.Run("Create entity extractor", func(t *testing.T) {
-		extractor, err := DefaultEntityExtractor()
+		extractor, err := DefaultEntityExtractorBasic()
 		require.NoError(t, err)
 		assert.NotNil(t, extractor)
 	})
 
 	t.Run("Extract entities from text", func(t *testing.T) {
-		extractor, err := DefaultEntityExtractor()
+		extractor, err := DefaultEntityExtractorBasic()
 		require.NoError(t, err)
 
 		text := "My name is Wolfgang and I live in Berlin."
@@ -35,7 +35,7 @@ func TestDefaultEntityExtractor(t *testing.T) {
 	})
 
 	t.Run("Extract entities from text with organizations", func(t *testing.T) {
-		extractor, err := DefaultEntityExtractor()
+		extractor, err := DefaultEntityExtractorBasic()
 		require.NoError(t, err)
 
 		text := "Apple Inc. is headquartered in Cupertino, California."
@@ -52,7 +52,7 @@ func TestDefaultEntityExtractor(t *testing.T) {
 	})
 
 	t.Run("Handle empty text", func(t *testing.T) {
-		extractor, err := DefaultEntityExtractor()
+		extractor, err := DefaultEntityExtractorBasic()
 		require.NoError(t, err)
 
 		entities, err := extractor("")
@@ -62,7 +62,7 @@ func TestDefaultEntityExtractor(t *testing.T) {
 	})
 
 	t.Run("Handle text without entities", func(t *testing.T) {
-		extractor, err := DefaultEntityExtractor()
+		extractor, err := DefaultEntityExtractorBasic()
 		require.NoError(t, err)
 
 		text := "This is a simple sentence without any named entities."

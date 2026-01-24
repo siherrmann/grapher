@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sort"
 
 	"github.com/google/uuid"
 	"github.com/siherrmann/grapher/core/pipeline"
@@ -52,12 +53,7 @@ func NewGrapher(config *helper.DatabaseConfiguration, embeddingDim int) (*Graphe
 		return nil, helper.NewError("create documents handler", err)
 	}
 
-	edges, err := database.NewEdgesDBHandler(db, false)
-	if err != nil {
-		return nil, helper.NewError("create edges handler", err)
-	}
-
-	chunks, err := database.NewChunksDBHandler(db, edges, embeddingDim, false)
+	chunks, err := database.NewChunksDBHandler(db, embeddingDim, false)
 	if err != nil {
 		return nil, helper.NewError("create chunks handler", err)
 	}
@@ -65,6 +61,11 @@ func NewGrapher(config *helper.DatabaseConfiguration, embeddingDim int) (*Graphe
 	entities, err := database.NewEntitiesDBHandler(db, false)
 	if err != nil {
 		return nil, helper.NewError("create entities handler", err)
+	}
+
+	edges, err := database.NewEdgesDBHandler(db, false)
+	if err != nil {
+		return nil, helper.NewError("create edges handler", err)
 	}
 
 	// Create retrieval engine with database handlers
@@ -106,7 +107,7 @@ func (g *Grapher) UseDefaultPipeline() error {
 		return helper.NewError("create default embedder", err)
 	}
 
-	entityExtractor, err := pipeline.DefaultEntityExtractor()
+	entityExtractor, err := pipeline.DefaultEntityExtractorBasic()
 	if err != nil {
 		return helper.NewError("create default entity extractor", err)
 	}
@@ -163,9 +164,21 @@ func (g *Grapher) ProcessAndInsertDocument(doc *model.Document) (int, error) {
 		slog.String("document_id", doc.RID.String()))
 
 	// Insert all chunks and build a path-to-ID mapping
-	chunkPathToID := make(map[string]uuid.UUID)
+	chunkPathToID := make(map[string]int)
 	for i, chunk := range result.Chunks {
 		chunk.DocumentID = doc.ID
+
+		// Merge document metadata into chunk metadata
+		if chunk.Metadata == nil {
+			chunk.Metadata = make(model.Metadata)
+		}
+		for key, value := range doc.Metadata {
+			// Only add if not already set by chunker
+			if _, exists := chunk.Metadata[key]; !exists {
+				chunk.Metadata[key] = value
+			}
+		}
+
 		if err := g.Chunks.InsertChunk(chunk); err != nil {
 			return i, helper.NewError(fmt.Sprintf("insert chunk %d", i), err)
 		}
@@ -216,7 +229,7 @@ func (g *Grapher) ProcessAndInsertDocument(doc *model.Document) (int, error) {
 }
 
 // Search performs vector similarity search
-func (g *Grapher) Search(ctx context.Context, query string, config *model.QueryConfig) ([]*model.RetrievalResult, error) {
+func (g *Grapher) Search(ctx context.Context, query string, config *model.QueryConfig) ([]*model.Chunk, error) {
 	if g.Engine == nil {
 		return nil, helper.NewError("vector search", fmt.Errorf("retrieval engine not initialized"))
 	}
@@ -230,11 +243,11 @@ func (g *Grapher) Search(ctx context.Context, query string, config *model.QueryC
 		return nil, helper.NewError("generate embedding", err)
 	}
 
-	return g.Engine.VectorRetrieve(ctx, embedding, config)
+	return g.Engine.Similarity(ctx, embedding, config)
 }
 
 // ContextualSearch performs contextual retrieval (vector + neighbors + hierarchy)
-func (g *Grapher) ContextualSearch(ctx context.Context, query string, config *model.QueryConfig) ([]*model.RetrievalResult, error) {
+func (g *Grapher) ContextualSearch(ctx context.Context, query string, config *model.QueryConfig) ([]*model.Chunk, error) {
 	if g.Pipeline == nil || g.Pipeline.Embedder == nil {
 		return nil, helper.NewError("contextual search", fmt.Errorf("pipeline with embedder not set, use SetPipeline() first"))
 	}
@@ -245,12 +258,11 @@ func (g *Grapher) ContextualSearch(ctx context.Context, query string, config *mo
 		return nil, helper.NewError("generate embedding", err)
 	}
 
-	strategy := retrieval.NewContextualStrategy(g.Engine)
-	return strategy.Retrieve(ctx, embedding, config)
+	return g.Engine.Contextual(ctx, embedding, config)
 }
 
 // MultiHopSearch performs multi-hop graph traversal retrieval
-func (g *Grapher) MultiHopSearch(ctx context.Context, query string, config *model.QueryConfig) ([]*model.RetrievalResult, error) {
+func (g *Grapher) MultiHopSearch(ctx context.Context, query string, config *model.QueryConfig) ([]*model.Chunk, error) {
 	if g.Pipeline == nil || g.Pipeline.Embedder == nil {
 		return nil, helper.NewError("multi-hop search", fmt.Errorf("pipeline with embedder not set, use SetPipeline() first"))
 	}
@@ -261,12 +273,11 @@ func (g *Grapher) MultiHopSearch(ctx context.Context, query string, config *mode
 		return nil, helper.NewError("generate embedding", err)
 	}
 
-	strategy := retrieval.NewMultiHopStrategy(g.Engine)
-	return strategy.Retrieve(ctx, embedding, config)
+	return g.Engine.MultiHop(ctx, embedding, config)
 }
 
-// HybridSearch performs fully configurable hybrid retrieval
-func (g *Grapher) HybridSearch(ctx context.Context, query string, config *model.QueryConfig) ([]*model.RetrievalResult, error) {
+// HybridSearch performs fully configurable hybrid retrieval with entity-based boosting
+func (g *Grapher) HybridSearch(ctx context.Context, query string, config *model.QueryConfig) ([]*model.Chunk, error) {
 	if g.Pipeline == nil || g.Pipeline.Embedder == nil {
 		return nil, helper.NewError("hybrid search", fmt.Errorf("pipeline with embedder not set, use SetPipeline() first"))
 	}
@@ -278,12 +289,62 @@ func (g *Grapher) HybridSearch(ctx context.Context, query string, config *model.
 	}
 
 	strategy := retrieval.NewHybridStrategy(g.Engine)
-	return strategy.Retrieve(ctx, embedding, config)
+
+	// Set entity extractor if available
+	if g.Pipeline.EntityExtractor != nil {
+		strategy.SetEntityExtractor(g.Pipeline.EntityExtractor)
+	}
+
+	results, err := g.Engine.Hybrid(ctx, embedding, config)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract entities from query and boost scores for chunks mentioning them
+	if g.Pipeline.EntityExtractor != nil && config != nil && config.EntityWeight > 0 {
+		queryEntities, err := g.Pipeline.EntityExtractor(query)
+		if err == nil && len(queryEntities) > 0 {
+			// Create result map for efficient lookup
+			resultMap := make(map[int]*model.Chunk)
+			for _, r := range results {
+				resultMap[r.ID] = r
+			}
+
+			// Search for each extracted entity
+			for _, queryEntity := range queryEntities {
+				// Find matching entities in database
+				chunks, err := g.Engine.EntityCentric(ctx, queryEntity.ID, config)
+				if err != nil || len(chunks) == 0 {
+					continue
+				}
+
+				for _, cmen := range chunks {
+					if existing, exists := resultMap[cmen.ID]; exists {
+						// Boost existing chunk
+						existing.Score += config.EntityWeight
+						// if existing.RetrievalMethod != "entity" {
+						// 	existing.RetrievalMethod = existing.RetrievalMethod + "+entity"
+						// }
+					} else {
+						results = append(results, cmen)
+						resultMap[cmen.ID] = cmen
+					}
+				}
+			}
+
+			// Re-sort by score after entity boosting
+			sort.Slice(results, func(i, j int) bool {
+				return results[i].Score > results[j].Score
+			})
+		}
+	}
+
+	return results, nil
 }
 
 // DocumentScopedSearch performs hybrid search within specific documents only
 // This is optimized for single or multi-document Q&A by filtering at the database level
-func (g *Grapher) DocumentScopedSearch(ctx context.Context, query string, documentRIDs []uuid.UUID, config *model.QueryConfig) ([]*model.RetrievalResult, error) {
+func (g *Grapher) DocumentScopedSearch(ctx context.Context, query string, documentRIDs []uuid.UUID, config *model.QueryConfig) ([]*model.Chunk, error) {
 	if g.Pipeline == nil || g.Pipeline.Embedder == nil {
 		return nil, helper.NewError("document scoped search", fmt.Errorf("pipeline with embedder not set, use SetPipeline() first"))
 	}
@@ -304,23 +365,21 @@ func (g *Grapher) DocumentScopedSearch(ctx context.Context, query string, docume
 	}
 	config.DocumentRIDs = documentRIDs
 
-	strategy := retrieval.NewHybridStrategy(g.Engine)
-	return strategy.Retrieve(ctx, embedding, config)
+	return g.Engine.Hybrid(ctx, embedding, config)
 }
 
 // EntityCentricSearch performs entity-centric retrieval
-func (g *Grapher) EntityCentricSearch(ctx context.Context, entityID uuid.UUID, config *model.QueryConfig) ([]*model.RetrievalResult, error) {
-	strategy := retrieval.NewEntityCentricStrategy(g.Engine, g.Entities)
-	return strategy.Retrieve(ctx, entityID, config)
+func (g *Grapher) EntityCentricSearch(ctx context.Context, entityID int, config *model.QueryConfig) ([]*model.Chunk, error) {
+	return g.Engine.EntityCentric(ctx, entityID, config)
 }
 
 // BFSTraversal performs breadth-first search from a chunk
-func (g *Grapher) BFSTraversal(ctx context.Context, sourceID uuid.UUID, maxHops int, edgeTypes []model.EdgeType, followBidirectional bool) ([]*retrieval.TraversalResult, error) {
+func (g *Grapher) BFSTraversal(ctx context.Context, sourceID int, maxHops int, edgeTypes []model.EdgeType, followBidirectional bool) ([]*retrieval.TraversalResult, error) {
 	return g.Engine.BFS(ctx, sourceID, maxHops, edgeTypes, followBidirectional)
 }
 
 // DFSTraversal performs depth-first search from a chunk
-func (g *Grapher) DFSTraversal(ctx context.Context, sourceID uuid.UUID, maxHops int, edgeTypes []model.EdgeType, followBidirectional bool) ([]*retrieval.TraversalResult, error) {
+func (g *Grapher) DFSTraversal(ctx context.Context, sourceID int, maxHops int, edgeTypes []model.EdgeType, followBidirectional bool) ([]*retrieval.TraversalResult, error) {
 	return g.Engine.DFS(ctx, sourceID, maxHops, edgeTypes, followBidirectional)
 }
 

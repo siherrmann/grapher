@@ -7,7 +7,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/siherrmann/grapher/helper"
 	"github.com/siherrmann/grapher/model"
 	loadSql "github.com/siherrmann/grapher/sql"
@@ -16,15 +15,15 @@ import (
 // EdgesDBHandlerFunctions defines the interface for Edges database operations.
 type EdgesDBHandlerFunctions interface {
 	InsertEdge(edge *model.Edge) error
-	SelectEdge(id uuid.UUID) (*model.Edge, error)
-	SelectEdgesFromChunk(chunkID uuid.UUID, edgeType *model.EdgeType) ([]*model.Edge, error)
-	SelectEdgesToChunk(chunkID uuid.UUID, edgeType *model.EdgeType) ([]*model.Edge, error)
-	SelectEdgesConnectedToChunk(chunkID uuid.UUID, edgeType *model.EdgeType) ([]*model.EdgeConnection, error)
-	SelectEdgesFromEntity(entityID uuid.UUID, edgeType *model.EdgeType) ([]*model.Edge, error)
-	SelectEdgesToEntity(entityID uuid.UUID, edgeType *model.EdgeType) ([]*model.Edge, error)
-	DeleteEdge(id uuid.UUID) error
-	UpdateEdgeWeight(id uuid.UUID, weight float64) error
-	TraverseBFSFromChunk(startChunkID uuid.UUID, maxDepth int, edgeType *model.EdgeType) ([]*model.TraversalNode, error)
+	UpdateEdgeWeight(id int, weight float64) error
+	DeleteEdge(id int) error
+	SelectEdge(id int) (*model.Edge, error)
+	SelectEdgesFromChunk(chunkID int, edgeType *model.EdgeType) ([]*model.Edge, error)
+	SelectEdgesToChunk(chunkID int, edgeType *model.EdgeType) ([]*model.Edge, error)
+	SelectEdgesConnectedToChunk(chunkID int, edgeType *model.EdgeType) ([]*model.EdgeConnection, error)
+	SelectEdgesFromEntity(entityID int, edgeType *model.EdgeType) ([]*model.Edge, error)
+	SelectEdgesToEntity(entityID int, edgeType *model.EdgeType) ([]*model.Edge, error)
+	TraverseBFSFromChunk(startChunkID int, maxDepth int, edgeType *model.EdgeType) ([]*model.TraversalNode, error)
 }
 
 // EdgesDBHandler handles edge-related database operations
@@ -110,8 +109,33 @@ func (h *EdgesDBHandler) InsertEdge(edge *model.Edge) error {
 	return nil
 }
 
+// UpdateEdgeWeight updates the weight of an edge
+func (h *EdgesDBHandler) UpdateEdgeWeight(id int, weight float64) error {
+	_, err := h.db.Instance.Exec(
+		`SELECT * FROM update_edge_weight($1, $2)`,
+		id,
+		weight,
+	)
+	if err != nil {
+		return helper.NewError("exec", err)
+	}
+	return nil
+}
+
+// DeleteEdge deletes an edge by ID
+func (h *EdgesDBHandler) DeleteEdge(id int) error {
+	_, err := h.db.Instance.Exec(
+		`SELECT delete_edge($1)`,
+		id,
+	)
+	if err != nil {
+		return helper.NewError("exec", err)
+	}
+	return nil
+}
+
 // SelectEdge retrieves an edge by ID
-func (h *EdgesDBHandler) SelectEdge(id uuid.UUID) (*model.Edge, error) {
+func (h *EdgesDBHandler) SelectEdge(id int) (*model.Edge, error) {
 	row := h.db.Instance.QueryRow(
 		`SELECT * FROM select_edge($1)`,
 		id,
@@ -139,7 +163,7 @@ func (h *EdgesDBHandler) SelectEdge(id uuid.UUID) (*model.Edge, error) {
 }
 
 // SelectEdgesFromChunk retrieves edges originating from a chunk
-func (h *EdgesDBHandler) SelectEdgesFromChunk(chunkID uuid.UUID, edgeType *model.EdgeType) ([]*model.Edge, error) {
+func (h *EdgesDBHandler) SelectEdgesFromChunk(chunkID int, edgeType *model.EdgeType) ([]*model.Edge, error) {
 	var rows *sql.Rows
 	var err error
 
@@ -193,7 +217,7 @@ func (h *EdgesDBHandler) SelectEdgesFromChunk(chunkID uuid.UUID, edgeType *model
 }
 
 // SelectEdgesToChunk retrieves edges targeting a chunk
-func (h *EdgesDBHandler) SelectEdgesToChunk(chunkID uuid.UUID, edgeType *model.EdgeType) ([]*model.Edge, error) {
+func (h *EdgesDBHandler) SelectEdgesToChunk(chunkID int, edgeType *model.EdgeType) ([]*model.Edge, error) {
 	var rows *sql.Rows
 	var err error
 
@@ -246,7 +270,7 @@ func (h *EdgesDBHandler) SelectEdgesToChunk(chunkID uuid.UUID, edgeType *model.E
 }
 
 // SelectEdgesConnectedToChunk retrieves all edges connected to a chunk (both directions)
-func (h *EdgesDBHandler) SelectEdgesConnectedToChunk(chunkID uuid.UUID, edgeType *model.EdgeType) ([]*model.EdgeConnection, error) {
+func (h *EdgesDBHandler) SelectEdgesConnectedToChunk(chunkID int, edgeType *model.EdgeType) ([]*model.EdgeConnection, error) {
 	var rows *sql.Rows
 	var err error
 
@@ -304,7 +328,7 @@ func (h *EdgesDBHandler) SelectEdgesConnectedToChunk(chunkID uuid.UUID, edgeType
 }
 
 // SelectEdgesFromEntity retrieves edges originating from an entity
-func (h *EdgesDBHandler) SelectEdgesFromEntity(entityID uuid.UUID, edgeType *model.EdgeType) ([]*model.Edge, error) {
+func (h *EdgesDBHandler) SelectEdgesFromEntity(entityID int, edgeType *model.EdgeType) ([]*model.Edge, error) {
 	var rows *sql.Rows
 	var err error
 
@@ -357,7 +381,7 @@ func (h *EdgesDBHandler) SelectEdgesFromEntity(entityID uuid.UUID, edgeType *mod
 }
 
 // SelectEdgesToEntity retrieves edges targeting an entity
-func (h *EdgesDBHandler) SelectEdgesToEntity(entityID uuid.UUID, edgeType *model.EdgeType) ([]*model.Edge, error) {
+func (h *EdgesDBHandler) SelectEdgesToEntity(entityID int, edgeType *model.EdgeType) ([]*model.Edge, error) {
 	var rows *sql.Rows
 	var err error
 
@@ -409,33 +433,8 @@ func (h *EdgesDBHandler) SelectEdgesToEntity(entityID uuid.UUID, edgeType *model
 	return edges, nil
 }
 
-// DeleteEdge deletes an edge by ID
-func (h *EdgesDBHandler) DeleteEdge(id uuid.UUID) error {
-	_, err := h.db.Instance.Exec(
-		`SELECT delete_edge($1)`,
-		id,
-	)
-	if err != nil {
-		return helper.NewError("exec", err)
-	}
-	return nil
-}
-
-// UpdateEdgeWeight updates the weight of an edge
-func (h *EdgesDBHandler) UpdateEdgeWeight(id uuid.UUID, weight float64) error {
-	_, err := h.db.Instance.Exec(
-		`SELECT * FROM update_edge_weight($1, $2)`,
-		id,
-		weight,
-	)
-	if err != nil {
-		return helper.NewError("exec", err)
-	}
-	return nil
-}
-
 // TraverseBFSFromChunk performs breadth-first search from a starting chunk
-func (h *EdgesDBHandler) TraverseBFSFromChunk(startChunkID uuid.UUID, maxDepth int, edgeType *model.EdgeType) ([]*model.TraversalNode, error) {
+func (h *EdgesDBHandler) TraverseBFSFromChunk(startChunkID int, maxDepth int, edgeType *model.EdgeType) ([]*model.TraversalNode, error) {
 	var rows *sql.Rows
 	var err error
 
@@ -462,20 +461,13 @@ func (h *EdgesDBHandler) TraverseBFSFromChunk(startChunkID uuid.UUID, maxDepth i
 	var nodes []*model.TraversalNode
 	for rows.Next() {
 		node := &model.TraversalNode{}
-		var pathArray []byte
 		err := rows.Scan(
 			&node.ChunkID,
 			&node.Depth,
-			&pathArray,
+			&node.Path,
 		)
 		if err != nil {
 			return nil, helper.NewError("scan", err)
-		}
-
-		// Parse PostgreSQL UUID array
-		// Format: {uuid1,uuid2,uuid3}
-		if err := parseUUIDArray(pathArray, &node.Path); err != nil {
-			return nil, helper.NewError("parsing path array", err)
 		}
 
 		nodes = append(nodes, node)
@@ -487,47 +479,4 @@ func (h *EdgesDBHandler) TraverseBFSFromChunk(startChunkID uuid.UUID, maxDepth i
 	}
 
 	return nodes, nil
-}
-
-// parseUUIDArray parses PostgreSQL UUID array format
-func parseUUIDArray(data []byte, result *[]uuid.UUID) error {
-	// PostgreSQL array format: {uuid1,uuid2,uuid3}
-	str := string(data)
-	if len(str) < 2 || str[0] != '{' || str[len(str)-1] != '}' {
-		return helper.NewError("invalid array format", fmt.Errorf("%s", str))
-	}
-
-	// Remove braces
-	str = str[1 : len(str)-1]
-	if str == "" {
-		*result = []uuid.UUID{}
-		return nil
-	}
-
-	// Split by comma
-	parts := []string{}
-	current := ""
-	for _, ch := range str {
-		if ch == ',' {
-			parts = append(parts, current)
-			current = ""
-		} else {
-			current += string(ch)
-		}
-	}
-	if current != "" {
-		parts = append(parts, current)
-	}
-
-	// Parse each UUID
-	*result = make([]uuid.UUID, 0, len(parts))
-	for _, part := range parts {
-		id, err := uuid.Parse(part)
-		if err != nil {
-			return helper.NewError(fmt.Sprintf("parsing UUID %s", part), err)
-		}
-		*result = append(*result, id)
-	}
-
-	return nil
 }

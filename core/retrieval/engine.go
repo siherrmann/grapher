@@ -3,7 +3,6 @@ package retrieval
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/siherrmann/grapher/database"
 	"github.com/siherrmann/grapher/model"
 )
@@ -24,33 +23,8 @@ func NewEngine(chunks *database.ChunksDBHandler, edges *database.EdgesDBHandler,
 	}
 }
 
-// VectorRetrieve performs pure vector similarity search
-func (e *Engine) VectorRetrieve(ctx context.Context, embedding []float32, config *model.QueryConfig) ([]*model.RetrievalResult, error) {
-	chunks, err := e.chunks.SelectChunksBySimilarity(embedding, config.TopK, config.SimilarityThreshold, config.DocumentRIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	results := make([]*model.RetrievalResult, len(chunks))
-	for i, chunk := range chunks {
-		score := 0.0
-		if chunk.Similarity != nil {
-			score = *chunk.Similarity
-		}
-		results[i] = &model.RetrievalResult{
-			Chunk:           chunk,
-			Score:           score,
-			SimilarityScore: score,
-			GraphDistance:   0,
-			RetrievalMethod: "vector",
-		}
-	}
-
-	return results, nil
-}
-
 // GetNeighbors retrieves immediate neighbors of a chunk
-func (e *Engine) GetNeighbors(ctx context.Context, chunkID uuid.UUID, edgeTypes []model.EdgeType, followBidirectional bool) ([]*model.Chunk, error) {
+func (e *Engine) GetNeighbors(ctx context.Context, chunkID int, edgeTypes []model.EdgeType, followBidirectional bool) ([]*model.Chunk, error) {
 	allEdges, err := e.edges.SelectEdgesFromChunk(chunkID, nil)
 	if err != nil {
 		return nil, err
@@ -72,12 +46,11 @@ func (e *Engine) GetNeighbors(ctx context.Context, chunkID uuid.UUID, edgeTypes 
 	}
 
 	var neighbors []*model.Chunk
-	visited := make(map[uuid.UUID]bool)
+	visited := make(map[int]bool)
 
 	for _, edge := range edges {
-		var targetID uuid.UUID
-
 		// Determine target based on edge direction
+		var targetID int
 		if edge.SourceChunkID != nil && *edge.SourceChunkID == chunkID && edge.TargetChunkID != nil {
 			targetID = *edge.TargetChunkID
 		} else if edge.Bidirectional && edge.TargetChunkID != nil && *edge.TargetChunkID == chunkID && edge.SourceChunkID != nil {
@@ -109,14 +82,14 @@ func (e *Engine) GetHierarchicalContext(ctx context.Context, path string, config
 	var allChunks []*model.Chunk
 
 	if config.IncludeAncestors {
-		chunks, err := e.chunks.SelectAllChunksByPathAncestor(path)
+		chunks, err := e.chunks.SelectChunksByPathAncestor(path)
 		if err == nil {
 			allChunks = append(allChunks, chunks...)
 		}
 	}
 
 	if config.IncludeDescendants {
-		chunks, err := e.chunks.SelectAllChunksByPathDescendant(path)
+		chunks, err := e.chunks.SelectChunksByPathDescendant(path)
 		if err == nil {
 			allChunks = append(allChunks, chunks...)
 		}
@@ -136,16 +109,16 @@ func (e *Engine) GetHierarchicalContext(ctx context.Context, path string, config
 type TraversalResult struct {
 	Chunk    *model.Chunk
 	Distance int
-	Path     []uuid.UUID // Path from source to this chunk
+	Path     []int // Path from source to this chunk
 }
 
 // BFS performs breadth-first search from a source chunk
-func (e *Engine) BFS(ctx context.Context, sourceID uuid.UUID, maxHops int, edgeTypes []model.EdgeType, followBidirectional bool) ([]*TraversalResult, error) {
-	visited := make(map[uuid.UUID]bool)
+func (e *Engine) BFS(ctx context.Context, sourceID int, maxHops int, edgeTypes []model.EdgeType, followBidirectional bool) ([]*TraversalResult, error) {
+	visited := make(map[int]bool)
 	queue := []TraversalResult{{
 		Chunk:    nil,
 		Distance: 0,
-		Path:     []uuid.UUID{sourceID},
+		Path:     []int{sourceID},
 	}}
 
 	// Get source chunk
@@ -192,9 +165,8 @@ func (e *Engine) BFS(ctx context.Context, sourceID uuid.UUID, maxHops int, edgeT
 
 		// Process each edge
 		for _, edge := range edges {
-			var targetID uuid.UUID
-
 			// Determine target based on edge direction
+			var targetID int
 			if edge.SourceChunkID != nil && *edge.SourceChunkID == current.Chunk.ID && edge.TargetChunkID != nil {
 				targetID = *edge.TargetChunkID
 			} else if edge.Bidirectional && edge.TargetChunkID != nil && *edge.TargetChunkID == current.Chunk.ID && edge.SourceChunkID != nil {
@@ -217,7 +189,7 @@ func (e *Engine) BFS(ctx context.Context, sourceID uuid.UUID, maxHops int, edgeT
 			visited[targetID] = true
 
 			// Create new path
-			newPath := make([]uuid.UUID, len(current.Path))
+			newPath := make([]int, len(current.Path))
 			copy(newPath, current.Path)
 			newPath = append(newPath, targetID)
 
@@ -233,8 +205,8 @@ func (e *Engine) BFS(ctx context.Context, sourceID uuid.UUID, maxHops int, edgeT
 }
 
 // DFS performs depth-first search from a source chunk
-func (e *Engine) DFS(ctx context.Context, sourceID uuid.UUID, maxHops int, edgeTypes []model.EdgeType, followBidirectional bool) ([]*TraversalResult, error) {
-	visited := make(map[uuid.UUID]bool)
+func (e *Engine) DFS(ctx context.Context, sourceID int, maxHops int, edgeTypes []model.EdgeType, followBidirectional bool) ([]*TraversalResult, error) {
+	visited := make(map[int]bool)
 	var results []*TraversalResult
 
 	// Get source chunk
@@ -244,7 +216,7 @@ func (e *Engine) DFS(ctx context.Context, sourceID uuid.UUID, maxHops int, edgeT
 	}
 
 	// Start recursive DFS
-	e.dfsRecursive(ctx, sourceChunk, 0, maxHops, []uuid.UUID{sourceID}, edgeTypes, followBidirectional, visited, &results)
+	e.dfsRecursive(ctx, sourceChunk, 0, maxHops, []int{sourceID}, edgeTypes, followBidirectional, visited, &results)
 
 	return results, nil
 }
@@ -255,17 +227,17 @@ func (e *Engine) dfsRecursive(
 	current *model.Chunk,
 	distance int,
 	maxHops int,
-	path []uuid.UUID,
+	path []int,
 	edgeTypes []model.EdgeType,
 	followBidirectional bool,
-	visited map[uuid.UUID]bool,
+	visited map[int]bool,
 	results *[]*TraversalResult,
 ) {
 	// Mark as visited
 	visited[current.ID] = true
 
 	// Add to results
-	pathCopy := make([]uuid.UUID, len(path))
+	pathCopy := make([]int, len(path))
 	copy(pathCopy, path)
 	*results = append(*results, &TraversalResult{
 		Chunk:    current,
@@ -301,9 +273,8 @@ func (e *Engine) dfsRecursive(
 
 	// Process each edge
 	for _, edge := range edges {
-		var targetID uuid.UUID
-
 		// Determine target based on edge direction
+		var targetID int
 		if edge.SourceChunkID != nil && *edge.SourceChunkID == current.ID && edge.TargetChunkID != nil {
 			targetID = *edge.TargetChunkID
 		} else if edge.Bidirectional && edge.TargetChunkID != nil && *edge.TargetChunkID == current.ID && edge.SourceChunkID != nil {
@@ -324,7 +295,7 @@ func (e *Engine) dfsRecursive(
 		}
 
 		// Create new path
-		newPath := make([]uuid.UUID, len(path))
+		newPath := make([]int, len(path))
 		copy(newPath, path)
 		newPath = append(newPath, targetID)
 

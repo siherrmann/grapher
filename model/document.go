@@ -10,7 +10,7 @@ import (
 
 // Document represents a source document
 type Document struct {
-	ID        int64     `json:"id"`
+	ID        int       `json:"id"`
 	RID       uuid.UUID `json:"rid"`
 	Title     string    `json:"title"`
 	Source    string    `json:"source,omitempty"`

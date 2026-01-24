@@ -139,7 +139,7 @@ func TestProcessAndInsertDocument(t *testing.T) {
 		assert.NoError(t, err, "Expected ProcessAndInsertDocument to not return an error")
 		assert.Greater(t, numChunks, 0, "Expected at least one chunk to be inserted")
 		assert.NotEqual(t, "", doc.RID.String(), "Expected document RID to be set")
-		assert.Greater(t, doc.ID, int64(0), "Expected document ID to be set")
+		assert.Greater(t, doc.ID, int(0), "Expected document ID to be set")
 		assert.Equal(t, "", doc.Content, "Expected content to be cleared after processing")
 
 		// Cleanup
@@ -430,7 +430,7 @@ func TestTraversal(t *testing.T) {
 	require.GreaterOrEqual(t, numChunks, 1) // At least 1 chunk (changed from >1)
 
 	// Get chunks to use as source
-	chunks, err := g.Chunks.SelectAllChunksByDocument(doc.RID)
+	chunks, err := g.Chunks.SelectChunksByDocument(doc.RID)
 	require.NoError(t, err)
 	require.NotEmpty(t, chunks)
 
