@@ -29,13 +29,16 @@ func (e *Engine) Contextual(ctx context.Context, embedding []float32, config *mo
 	// For each vector result, add neighbors and hierarchical context
 	resultMap := make(map[int]*model.Chunk)
 	for _, csim := range chunks {
+		csim.RetrievalMethod = model.RetrievalMethodVector
+		resultMap[csim.ID] = csim
+
 		// Get neighbors
 		neighbors, err := e.GetNeighbors(ctx, csim.ID, config.EdgeTypes, config.FollowBidirectional)
 		if err != nil {
 			continue
 		}
-
 		for _, cnei := range neighbors {
+			cnei.RetrievalMethod = model.RetrievalMethodNeighbor
 			if _, exists := resultMap[cnei.ID]; !exists {
 				resultMap[cnei.ID] = cnei
 			}
@@ -46,8 +49,8 @@ func (e *Engine) Contextual(ctx context.Context, embedding []float32, config *mo
 		if err != nil {
 			continue
 		}
-
 		for _, hChunk := range hierarchicalChunks {
+			hChunk.RetrievalMethod = model.RetrievalMethodContextual
 			if _, exists := resultMap[hChunk.ID]; !exists {
 				resultMap[hChunk.ID] = hChunk
 			}
@@ -71,6 +74,7 @@ func (e *Engine) MultiHop(ctx context.Context, embedding []float32, config *mode
 	// Process each vector result
 	resultMap := make(map[int]*model.Chunk)
 	for _, csim := range chunks {
+		csim.RetrievalMethod = model.RetrievalMethodVector
 		resultMap[csim.ID] = csim
 
 		// Get graph traversal results
@@ -80,6 +84,7 @@ func (e *Engine) MultiHop(ctx context.Context, embedding []float32, config *mode
 				continue
 			}
 			for _, cnei := range chunks {
+				cnei.RetrievalMethod = model.RetrievalMethodGraph
 				if _, exists := resultMap[cnei.ID]; !exists {
 					resultMap[cnei.ID] = cnei
 				}
@@ -104,6 +109,7 @@ func (e *Engine) Hybrid(ctx context.Context, embedding []float32, config *model.
 	// Process each vector result
 	resultMap := make(map[int]*model.Chunk)
 	for _, csim := range chunks {
+		csim.RetrievalMethod = model.RetrievalMethodVector
 		resultMap[csim.ID] = csim
 
 		// Get graph traversal results
@@ -113,6 +119,7 @@ func (e *Engine) Hybrid(ctx context.Context, embedding []float32, config *model.
 				continue
 			}
 			for _, cnei := range chunks {
+				cnei.RetrievalMethod = model.RetrievalMethodGraph
 				if _, exists := resultMap[cnei.ID]; !exists {
 					resultMap[cnei.ID] = cnei
 				}
@@ -126,6 +133,7 @@ func (e *Engine) Hybrid(ctx context.Context, embedding []float32, config *model.
 				continue
 			}
 			for _, chie := range hierarchicalChunks {
+				chie.RetrievalMethod = model.RetrievalMethodContextual
 				if existing, exists := resultMap[chie.ID]; exists {
 					// Update score with hierarchy component
 					existing.Score += config.HierarchyWeight

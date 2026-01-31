@@ -91,8 +91,8 @@ func main() {
 	for i, result := range results {
 		fmt.Printf("\n--- Result %d ---\n", i+1)
 		fmt.Printf("Score: %.4f\n", result.Score)
-		fmt.Printf("Content: %s\n", result.Chunk.Content)
-		fmt.Printf("Path: %s\n", result.Chunk.Path)
+		fmt.Printf("Content: %s\n", result.Content)
+		fmt.Printf("Path: %s\n", result.Path)
 		fmt.Printf("Method: %s\n", result.RetrievalMethod)
 	}
 

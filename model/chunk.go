@@ -6,6 +6,17 @@ import (
 	"github.com/google/uuid"
 )
 
+type RetrievalMethod string
+
+const (
+	RetrievalMethodVector     RetrievalMethod = "vector"
+	RetrievalMethodEntity     RetrievalMethod = "entity"
+	RetrievalMethodNeighbor   RetrievalMethod = "neighbor"
+	RetrievalMethodContextual RetrievalMethod = "contextual"
+	RetrievalMethodGraph      RetrievalMethod = "graph"
+	RetrievalMethodHybrid     RetrievalMethod = "hybrid"
+)
+
 // Chunk represents a document chunk (node in the graph)
 type Chunk struct {
 	ID          int       `json:"id"`
@@ -20,9 +31,10 @@ type Chunk struct {
 	Metadata    Metadata  `json:"metadata,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	// Results
-	Similarity     float64 `json:"similarity,omitempty"`
-	Distance       float64 `json:"distance,omitempty"`
-	IsMatch        bool    `json:"is_match,omitempty"`
-	PathFromSource []int   `json:"path_from_source,omitempty"`
-	Score          float64 `json:"score,omitempty"`
+	Similarity      float64         `json:"similarity,omitempty"`
+	Distance        float64         `json:"distance,omitempty"`
+	IsMatch         bool            `json:"is_match,omitempty"`
+	PathFromSource  []int           `json:"path_from_source,omitempty"`
+	Score           float64         `json:"score,omitempty"`
+	RetrievalMethod RetrievalMethod `json:"retrieval_method,omitempty"`
 }

@@ -123,6 +123,28 @@ func (g *Grapher) UseDefaultPipeline() error {
 	return nil
 }
 
+// UseGraphPipeline sets up a pipeline with REBEL-based combined entity and relation extraction
+// This uses DefaultChunker with 500 char max chunks and 0.7 similarity threshold,
+// DefaultEmbedder with the all-MiniLM-L6-v2 model (384 dimensions),
+// and REBEL model for combined entity and relation extraction in a single pass
+// Entity names are embedded for similarity search
+func (g *Grapher) UseGraphPipeline() error {
+	chunker := pipeline.DefaultChunker(500, 0.7)
+	embedder, err := pipeline.DefaultEmbedder()
+	if err != nil {
+		return helper.NewError("create default embedder", err)
+	}
+
+	graphExtractor, err := pipeline.DefaultGraphExtractor(embedder)
+	if err != nil {
+		return helper.NewError("create graph extractor", err)
+	}
+
+	g.Pipeline = pipeline.NewPipeline(chunker, embedder)
+	g.Pipeline.SetGraphExtractor(graphExtractor)
+	return nil
+}
+
 // ProcessAndInsertDocument processes a document by:
 // 1. Inserting the document metadata (without content)
 // 2. Processing the content into chunks using the pipeline
@@ -286,13 +308,6 @@ func (g *Grapher) HybridSearch(ctx context.Context, query string, config *model.
 	embedding, err := g.Pipeline.Embedder(query)
 	if err != nil {
 		return nil, helper.NewError("generate embedding", err)
-	}
-
-	strategy := retrieval.NewHybridStrategy(g.Engine)
-
-	// Set entity extractor if available
-	if g.Pipeline.EntityExtractor != nil {
-		strategy.SetEntityExtractor(g.Pipeline.EntityExtractor)
 	}
 
 	results, err := g.Engine.Hybrid(ctx, embedding, config)

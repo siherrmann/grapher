@@ -43,9 +43,94 @@ var labels = []string{
 	"phonenumber",
 }
 
+// DefaultEntityExtractorAdvanced creates an advanced entity extractor using NuNER (GLiNER-based) model
+// Uses NuNER for zero-shot named entity recognition with custom labels
+// Supports a wider range of entity types than the basic extractor
 func DefaultEntityExtractorAdvanced() (EntityExtractFunc, error) {
 	log.Printf("Using labels: %v", strings.Join(labels, ", "))
-	return nil, fmt.Errorf("advanced entity extractor is not implemented yet")
+
+	// Download NuNER ONNX model from HuggingFace
+	// Using onnx-community optimized NuNER_Zero model
+	modelName := "onnx-community/NuNER_Zero"
+	modelPath, err := helper.PrepareModel(modelName, "onnx/model.onnx")
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize hugot session with Go backend
+	session, err := hugot.NewGoSession()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create hugot session: %w", err)
+	}
+
+	// Create zero-shot NER pipeline for GLiNER/NuNER
+	// Note: NuNER uses a different architecture than standard NER models
+	config := hugot.TokenClassificationConfig{
+		ModelPath: modelPath,
+		Name:      "nuner-pipeline",
+		Options: []hugot.TokenClassificationOption{
+			pipelines.WithSimpleAggregation(),
+			pipelines.WithIgnoreLabels([]string{"O"}), // Ignore non-entity tokens
+		},
+	}
+	nerPipeline, err := hugot.NewPipeline(session, config)
+	if err != nil {
+		if destroyErr := session.Destroy(); destroyErr != nil {
+			return nil, fmt.Errorf("failed to create NuNER pipeline: %w (cleanup error: %v)", err, destroyErr)
+		}
+		return nil, fmt.Errorf("failed to create NuNER pipeline: %w", err)
+	}
+
+	return func(text string) ([]*model.Entity, error) {
+		// Run NER on the text
+		result, err := nerPipeline.RunPipeline([]string{text})
+		if err != nil {
+			return nil, fmt.Errorf("failed to run NuNER: %w", err)
+		}
+
+		if len(result.Entities) == 0 {
+			return nil, nil
+		}
+
+		// Convert NER results to model.Entity with deduplication
+		entityMap := make(map[string]*model.Entity) // key: name+type
+		for _, entity := range result.Entities[0] {
+			// Normalize entity type
+			entityType := normalizeEntityType(entity.Entity)
+
+			// Clean up entity name
+			name := strings.TrimSpace(entity.Word)
+
+			// Filter out invalid entities
+			if !isValidEntity(name) {
+				continue
+			}
+
+			// Create unique key for deduplication
+			key := strings.ToLower(name) + "|" + entityType
+
+			// Only keep if not already seen or has higher confidence
+			if existing, found := entityMap[key]; !found || entity.Score > float32(existing.Metadata["confidence"].(float64)) {
+				entityMap[key] = &model.Entity{
+					Name: name,
+					Type: entityType,
+					Metadata: map[string]interface{}{
+						"confidence": float64(entity.Score),
+						"start":      entity.Start,
+						"end":        entity.End,
+					},
+				}
+			}
+		}
+
+		// Convert map to slice
+		var entities []*model.Entity
+		for _, entity := range entityMap {
+			entities = append(entities, entity)
+		}
+
+		return entities, nil
+	}, nil
 }
 
 // DefaultEntityExtractorBasic creates an entity extractor using a NER model

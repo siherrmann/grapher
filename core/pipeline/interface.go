@@ -17,6 +17,11 @@ type EntityExtractFunc func(text string) ([]*model.Entity, error)
 // Returns a list of edges representing the relationships
 type RelationExtractFunc func(text string, chunkID string, entities []*model.Entity) ([]*model.Edge, error)
 
+// GraphExtractFunc extracts both entities and relationships in a single pass
+// Returns entities and edges, typically more efficient than separate extraction
+// Used by models like REBEL that jointly extract entities and relations
+type GraphExtractFunc func(text string) ([]*model.Entity, []*model.Edge, error)
+
 // ChunkWithPath represents a chunk with its hierarchical path
 type ChunkWithPath struct {
 	Content    string
@@ -33,6 +38,7 @@ type Pipeline struct {
 	Embedder          EmbedFunc
 	EntityExtractor   EntityExtractFunc   // Optional
 	RelationExtractor RelationExtractFunc // Optional
+	GraphExtractor    GraphExtractFunc    // Optional - extracts entities and relations in one pass
 }
 
 // NewPipeline creates a new processing pipeline
@@ -51,6 +57,12 @@ func (p *Pipeline) SetEntityExtractor(extractor EntityExtractFunc) {
 // SetRelationExtractor sets the relation extraction function
 func (p *Pipeline) SetRelationExtractor(extractor RelationExtractFunc) {
 	p.RelationExtractor = extractor
+}
+
+// SetGraphExtractor sets the graph extraction function (combined entity and relation extraction)
+// When set, this takes precedence over separate EntityExtractor and RelationExtractor
+func (p *Pipeline) SetGraphExtractor(extractor GraphExtractFunc) {
+	p.GraphExtractor = extractor
 }
 
 // ProcessingResult contains chunks and optionally extracted entities and relations
@@ -99,21 +111,34 @@ func (p *Pipeline) ProcessWithExtraction(text string, basePath string) (*Process
 		}
 		chunks = append(chunks, chunk)
 
-		// Extract entities if extractor is set
-		var chunkEntities []*model.Entity
-		if p.EntityExtractor != nil {
-			entities, err := p.EntityExtractor(cwp.Content)
-			if err == nil && entities != nil {
-				chunkEntities = entities
-				allEntities = append(allEntities, entities...)
+		// Use GraphExtractor if available (combined entity and relation extraction)
+		if p.GraphExtractor != nil {
+			entities, relations, err := p.GraphExtractor(cwp.Content)
+			if err == nil {
+				if entities != nil {
+					allEntities = append(allEntities, entities...)
+				}
+				if relations != nil {
+					allRelations = append(allRelations, relations...)
+				}
 			}
-		}
+		} else {
+			// Fall back to separate entity and relation extraction
+			var chunkEntities []*model.Entity
+			if p.EntityExtractor != nil {
+				entities, err := p.EntityExtractor(cwp.Content)
+				if err == nil && entities != nil {
+					chunkEntities = entities
+					allEntities = append(allEntities, entities...)
+				}
+			}
 
-		// Extract relations if extractor is set
-		if p.RelationExtractor != nil {
-			relations, err := p.RelationExtractor(cwp.Content, cwp.Path, chunkEntities)
-			if err == nil && relations != nil {
-				allRelations = append(allRelations, relations...)
+			// Extract relations if extractor is set
+			if p.RelationExtractor != nil {
+				relations, err := p.RelationExtractor(cwp.Content, cwp.Path, chunkEntities)
+				if err == nil && relations != nil {
+					allRelations = append(allRelations, relations...)
+				}
 			}
 		}
 	}

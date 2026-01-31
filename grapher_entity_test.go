@@ -67,13 +67,13 @@ func TestHybridSearchWithEntities(t *testing.T) {
 		// Check that chunks mentioning Lincoln are boosted
 		foundLincoln := false
 		for _, result := range results {
-			if result.Chunk.Content != "" {
+			if result.Content != "" {
 				t.Logf("Result: score=%.4f, method=%s, content=%s...",
-					result.Score, result.RetrievalMethod, result.Chunk.Content[:min(50, len(result.Chunk.Content))])
+					result.Score, result.RetrievalMethod, result.Content[:min(50, len(result.Content))])
 
 				// Check if this chunk mentions Lincoln
-				if containsEntity(result.Chunk.Content, "Lincoln") ||
-					containsEntity(result.Chunk.Content, "Abraham") {
+				if containsEntity(result.Content, "Lincoln") ||
+					containsEntity(result.Content, "Abraham") {
 					foundLincoln = true
 					// Entity-based results should have +entity in retrieval method
 					if config.EntityWeight > 0 {
@@ -147,8 +147,8 @@ func TestHybridSearchWithEntities(t *testing.T) {
 			t.Logf("Top result: score=%.4f, method=%s", topResult.Score, topResult.RetrievalMethod)
 
 			// The top result should mention Obama
-			foundObama := containsEntity(topResult.Chunk.Content, "Obama") ||
-				containsEntity(topResult.Chunk.Content, "Barack")
+			foundObama := containsEntity(topResult.Content, "Obama") ||
+				containsEntity(topResult.Content, "Barack")
 			assert.True(t, foundObama, "Expected top result to mention Obama with high entity weight")
 		}
 	})
@@ -211,7 +211,7 @@ func TestHybridSearchWithEntities(t *testing.T) {
 			if result.RetrievalMethod != "entity" {
 				// Non-pure-entity results should have similarity scores
 				t.Logf("Result: similarity=%.4f, total=%.4f, method=%s",
-					result.SimilarityScore, result.Score, result.RetrievalMethod)
+					result.Similarity, result.Score, result.RetrievalMethod)
 			}
 		}
 	})
@@ -257,7 +257,7 @@ func TestHybridSearchEntityIntegration(t *testing.T) {
 		// Count how many results mention Abel
 		abelMentions := 0
 		for _, result := range results {
-			if containsEntity(result.Chunk.Content, "Abel") {
+			if containsEntity(result.Content, "Abel") {
 				abelMentions++
 				t.Logf("Found Abel mention: method=%s, score=%.4f",
 					result.RetrievalMethod, result.Score)
@@ -284,8 +284,8 @@ func TestHybridSearchEntityIntegration(t *testing.T) {
 
 		// Chunks mentioning both entities should score higher
 		for i, result := range results {
-			hasCain := containsEntity(result.Chunk.Content, "Cain")
-			hasAbel := containsEntity(result.Chunk.Content, "Abel")
+			hasCain := containsEntity(result.Content, "Cain")
+			hasAbel := containsEntity(result.Content, "Abel")
 
 			if hasCain && hasAbel {
 				t.Logf("Result %d mentions both Cain and Abel: score=%.4f", i+1, result.Score)

@@ -177,10 +177,10 @@ func main() {
 	}
 	defer g.Close()
 
-	// Set up the default pipeline (semantic chunking + embeddings + entity/relation extraction)
-	fmt.Println("Setting up pipeline with entity and relation extraction...")
-	if err := g.UseDefaultPipeline(); err != nil {
-		log.Fatalf("Failed to set up pipeline: %v", err)
+	// Set up the graph pipeline (REBEL-based combined entity and relation extraction)
+	fmt.Println("Setting up pipeline with REBEL graph extraction...")
+	if err := g.UseGraphPipeline(); err != nil {
+		log.Fatalf("Failed to set up graph pipeline: %v", err)
 	}
 
 	// Create temporary directory for downloads
@@ -386,7 +386,7 @@ func extractBookTitle(filename string) string {
 	return strings.TrimSuffix(filename, ".md")
 }
 
-func printResults(results []*model.RetrievalResult, searchType string) {
+func printResults(results []*model.Chunk, searchType string) {
 	if len(results) == 0 {
 		fmt.Printf("No results found for %s\n", searchType)
 		return
@@ -395,14 +395,14 @@ func printResults(results []*model.RetrievalResult, searchType string) {
 	for i, result := range results {
 		// Safely get source from metadata
 		source := ""
-		if s, ok := result.Chunk.Metadata["source"].(string); ok {
+		if s, ok := result.Metadata["source"].(string); ok {
 			source = s
 		}
 
 		book := "Unknown"
 		if source != "" {
 			book = getBookFromSource(source)
-		} else if b, ok := result.Chunk.Metadata["book"].(string); ok {
+		} else if b, ok := result.Metadata["book"].(string); ok {
 			book = b
 		}
 
@@ -410,16 +410,16 @@ func printResults(results []*model.RetrievalResult, searchType string) {
 			i+1, result.Score, book, result.RetrievalMethod)
 
 		// Print content (truncated if too long)
-		content := result.Chunk.Content
+		content := result.Content
 		if len(content) > 300 {
 			content = content[:300] + "..."
 		}
 		fmt.Printf("    %s\n", strings.ReplaceAll(content, "\n", "\n    "))
 
 		// Print metadata if available
-		if bookMeta, ok := result.Chunk.Metadata["book"].(string); ok {
+		if bookMeta, ok := result.Metadata["book"].(string); ok {
 			fmt.Printf("    [Book: %s", bookMeta)
-			if testament, ok := result.Chunk.Metadata["testament"].(string); ok {
+			if testament, ok := result.Metadata["testament"].(string); ok {
 				fmt.Printf(", %s", testament)
 			}
 			fmt.Printf("]\n")

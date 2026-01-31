@@ -192,7 +192,7 @@ func main() {
 	// 7. Demonstrate graph traversal
 	if len(vectorResults) > 0 {
 		fmt.Println("\n=== 7. Graph Traversal (BFS) ===")
-		sourceChunkID := vectorResults[0].Chunk.ID
+		sourceChunkID := vectorResults[0].ID
 		fmt.Printf("Starting BFS from chunk: %d\n", sourceChunkID)
 
 		traversalResults, err := g.BFSTraversal(ctx, sourceChunkID, 2, []model.EdgeType{}, true)
@@ -221,7 +221,7 @@ func main() {
 	fmt.Println("✓ BFS graph traversal")
 }
 
-func printResults(title string, results []*model.RetrievalResult) {
+func printResults(title string, results []*model.Chunk) {
 	fmt.Printf("\n%s - Found %d results:\n", title, len(results))
 	for i, result := range results {
 		if i >= 3 {
@@ -229,10 +229,10 @@ func printResults(title string, results []*model.RetrievalResult) {
 		}
 		fmt.Printf("\n  Result %d:\n", i+1)
 		fmt.Printf("    Score: %.4f (similarity: %.4f, graph dist: %d)\n",
-			result.Score, result.SimilarityScore, result.GraphDistance)
+			result.Score, result.Similarity, result.Distance)
 		fmt.Printf("    Method: %s\n", result.RetrievalMethod)
-		fmt.Printf("    Path: %s\n", result.Chunk.Path)
-		content := result.Chunk.Content
+		fmt.Printf("    Path: %s\n", result.Path)
+		content := result.Content
 		if len(content) > 80 {
 			content = content[:80] + "..."
 		}

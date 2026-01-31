@@ -388,7 +388,7 @@ func TestSearchMethods(t *testing.T) {
 		assert.NoError(t, err)
 		// All results should be from doc1
 		for _, result := range results {
-			assert.Equal(t, doc1.RID, result.Chunk.DocumentRID)
+			assert.Equal(t, doc1.RID, result.DocumentRID)
 		}
 	})
 

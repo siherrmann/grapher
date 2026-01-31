@@ -149,21 +149,9 @@ func TestContextualStrategyRetrieve(t *testing.T) {
 	documentsHandler.DeleteDocument(doc.RID)
 }
 
-func TestNewMultiHopStrategy(t *testing.T) {
-	t.Run("Create multi-hop strategy", func(t *testing.T) {
-		chunks, edges, entities := initHandlers(t)
-		engine := NewEngine(chunks, edges, entities)
-		strategy := NewMultiHopStrategy(engine)
-
-		require.NotNil(t, strategy)
-		assert.NotNil(t, strategy.engine)
-	})
-}
-
 func TestMultiHopStrategyRetrieve(t *testing.T) {
 	chunks, edges, entities := initHandlers(t)
 	engine := NewEngine(chunks, edges, entities)
-	strategy := NewMultiHopStrategy(engine)
 
 	// Create test document
 	db := initDB(t)
@@ -249,7 +237,7 @@ func TestMultiHopStrategyRetrieve(t *testing.T) {
 			queryEmbedding[i] = 0.5
 		}
 
-		results, err := strategy.Retrieve(context.Background(), queryEmbedding, config)
+		results, err := engine.MultiHop(context.Background(), queryEmbedding, config)
 
 		assert.NoError(t, err)
 		require.NotEmpty(t, results)
@@ -268,7 +256,7 @@ func TestMultiHopStrategyRetrieve(t *testing.T) {
 			queryEmbedding[i] = 0.5
 		}
 
-		results, err := strategy.Retrieve(context.Background(), queryEmbedding, config)
+		results, err := engine.MultiHop(context.Background(), queryEmbedding, config)
 
 		assert.NoError(t, err)
 		require.NotEmpty(t, results)
@@ -283,21 +271,9 @@ func TestMultiHopStrategyRetrieve(t *testing.T) {
 	documentsHandler.DeleteDocument(doc.RID)
 }
 
-func TestNewHybridStrategy(t *testing.T) {
-	t.Run("Create hybrid strategy", func(t *testing.T) {
-		chunks, edges, entities := initHandlers(t)
-		engine := NewEngine(chunks, edges, entities)
-		strategy := NewHybridStrategy(engine)
-
-		require.NotNil(t, strategy)
-		assert.NotNil(t, strategy.engine)
-	})
-}
-
 func TestHybridStrategyRetrieve(t *testing.T) {
 	chunks, edges, entities := initHandlers(t)
 	engine := NewEngine(chunks, edges, entities)
-	strategy := NewHybridStrategy(engine)
 
 	// Create test document
 	db := initDB(t)
@@ -366,7 +342,7 @@ func TestHybridStrategyRetrieve(t *testing.T) {
 			queryEmbedding[i] = 0.5
 		}
 
-		results, err := strategy.Retrieve(context.Background(), queryEmbedding, config)
+		results, err := engine.Hybrid(context.Background(), queryEmbedding, config)
 
 		assert.NoError(t, err)
 		require.NotEmpty(t, results)
@@ -387,7 +363,7 @@ func TestHybridStrategyRetrieve(t *testing.T) {
 			queryEmbedding[i] = 0.5
 		}
 
-		results, err := strategy.Retrieve(context.Background(), queryEmbedding, config)
+		results, err := engine.Hybrid(context.Background(), queryEmbedding, config)
 
 		assert.NoError(t, err)
 		assert.LessOrEqual(t, len(results), 1)
@@ -407,7 +383,7 @@ func TestHybridStrategyRetrieve(t *testing.T) {
 			queryEmbedding[i] = 0.5
 		}
 
-		results, err := strategy.Retrieve(context.Background(), queryEmbedding, config)
+		results, err := engine.Hybrid(context.Background(), queryEmbedding, config)
 
 		assert.NoError(t, err)
 		require.NotEmpty(t, results)
@@ -420,21 +396,9 @@ func TestHybridStrategyRetrieve(t *testing.T) {
 	documentsHandler.DeleteDocument(doc.RID)
 }
 
-func TestNewEntityCentricStrategy(t *testing.T) {
-	t.Run("Create entity-centric strategy", func(t *testing.T) {
-		chunks, edges, entities := initHandlers(t)
-		engine := NewEngine(chunks, edges, entities)
-		strategy := NewEntityCentricStrategy(engine, entities)
-
-		require.NotNil(t, strategy)
-		assert.NotNil(t, strategy.engine)
-	})
-}
-
 func TestEntityCentricStrategyRetrieve(t *testing.T) {
 	chunks, edges, entities := initHandlers(t)
 	engine := NewEngine(chunks, edges, entities)
-	strategy := NewEntityCentricStrategy(engine, entities)
 
 	// Create test document
 	db := initDB(t)
@@ -492,7 +456,7 @@ func TestEntityCentricStrategyRetrieve(t *testing.T) {
 			MaxHops:             1,
 		}
 
-		results, err := strategy.Retrieve(context.Background(), entity.ID, config)
+		results, err := engine.EntityCentric(context.Background(), entity.ID, config)
 
 		assert.NoError(t, err)
 		require.NotNil(t, results)
@@ -505,7 +469,7 @@ func TestEntityCentricStrategyRetrieve(t *testing.T) {
 			MaxHops:             2,
 		}
 
-		results, err := strategy.Retrieve(context.Background(), entity.ID, config)
+		results, err := engine.EntityCentric(context.Background(), entity.ID, config)
 
 		assert.NoError(t, err)
 		require.NotNil(t, results)
